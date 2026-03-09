@@ -1,0 +1,69 @@
+.jp-SympyEquationSidebar {
+  min-width: 320px;
+}
+
+.jp-SympyEquationPanel {
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.jp-SympyEquationPanel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.jp-SympyEquationPanel-headerButtons {
+  display: flex;
+  gap: 6px;
+}
+
+.jp-SympyEquationPanel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.jp-SympyEquationCard {
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.jp-SympyEquationCard-rendered,
+.jp-SympyEquationCard-fallback,
+.jp-SympyEquationCard-sympy {
+  margin: 8px 0;
+}
+
+.jp-SympyEquationCard-fallback {
+  background: var(--jp-layout-color1);
+  padding: 8px;
+  white-space: pre-wrap;
+}
+
+.jp-SympyEquationCard-sympy {
+  display: block;
+  white-space: pre-wrap;
+}
+
+.jp-SympyEquationCard-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.jp-SympyEquationCard-description {
+  margin: 0;
+}
+
+.jp-SympyEquationModal .jp-SympyEquationModal-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.jp-SympyEquationModal textarea {
+  min-height: 64px;
+}

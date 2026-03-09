@@ -1,0 +1,15 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v4.5.2
+_src_path: C:/repos/_tmp_extension_template
+author_email: reubengann@gmail.com
+author_name: Reuben Gann
+has_ai_rules: false
+has_binder: false
+has_settings: true
+kind: frontend-and-server
+labextension_name: jupyterlab-sympy-assistant
+project_short_description: SymPy helper sidebar for JupyterLab notebooks.
+python_name: jupyterlab_sympy_assistant
+repository: https://github.com/reubengann/jupyterlab-sympy-assistant
+test: true
+
