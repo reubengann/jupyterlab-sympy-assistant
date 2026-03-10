@@ -78,7 +78,14 @@ async def test_convert_latex_endpoint(jp_fetch, monkeypatch):
     from jupyterlab_sympy_assistant import handlers
 
     monkeypatch.setattr(
-        handlers, "convert_latex_to_sympy", lambda latex: "Eq(rho, m/V)\nEq(m/V, 1/v)"
+        handlers,
+        "convert_latex_to_bundle",
+        lambda latex: {
+            "sympy": "sp.Eq(rho, m/V)\nsp.Eq(m/V, 1/v)",
+            "symbols": ["V", "m", "rho", "v"],
+            "symbols_line": "V, m, rho, v = sp.symbols('V m rho v')",
+            "code": "V, m, rho, v = sp.symbols('V m rho v')\nsp.Eq(rho, m/V)\nsp.Eq(m/V, 1/v)",
+        },
     )
 
     response = await jp_fetch(
@@ -90,4 +97,5 @@ async def test_convert_latex_endpoint(jp_fetch, monkeypatch):
     )
     assert response.code == 200
     payload = json.loads(response.body)
-    assert payload["sympy"] == "Eq(rho, m/V)\nEq(m/V, 1/v)"
+    assert payload["sympy"] == "sp.Eq(rho, m/V)\nsp.Eq(m/V, 1/v)"
+    assert payload["symbols"] == ["V", "m", "rho", "v"]

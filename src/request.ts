@@ -1,7 +1,7 @@
 import { URLExt } from '@jupyterlab/coreutils';
 
 import { ServerConnection } from '@jupyterlab/services';
-import { IEquationInput, IEquationRecord } from './types';
+import { IEquationInput, IEquationRecord, ILatexConversion } from './types';
 
 /**
  * Call the server extension
@@ -100,13 +100,12 @@ export class EquationLibraryApi {
     });
   }
 
-  async convertLatex(latex: string): Promise<string> {
-
-    const payload = await requestAPI<{ sympy: string }>('convert-latex', this.serverSettings, {
+  async convertLatex(latex: string): Promise<ILatexConversion> {
+    const payload = await requestAPI<ILatexConversion>('convert-latex', this.serverSettings, {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ latex }),
       method: 'POST'
     });
-    return payload.sympy;
+    return payload;
   }
 }

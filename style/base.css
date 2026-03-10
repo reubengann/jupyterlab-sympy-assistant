@@ -29,6 +29,15 @@
   border: 1px solid var(--jp-border-color2);
   border-radius: 4px;
   padding: 8px;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.jp-SympyEquationCard-body {
+  flex: 1;
+  min-width: 0;
 }
 
 .jp-SympyEquationCard-rendered,
@@ -50,7 +59,26 @@
 
 .jp-SympyEquationCard-actions {
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.jp-SympyEquationCard-iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 4px;
+  background: var(--jp-layout-color1);
+  color: inherit;
+  cursor: pointer;
+}
+
+.jp-SympyEquationCard-iconButton:hover {
+  background: var(--jp-layout-color2);
 }
 
 .jp-SympyEquationCard-description {

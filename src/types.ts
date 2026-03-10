@@ -16,3 +16,10 @@ export interface IEquationInput {
   description?: string;
   tags?: string[];
 }
+
+export interface ILatexConversion {
+  sympy: string;
+  symbols: string[];
+  symbols_line: string;
+  code: string;
+}

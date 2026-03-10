@@ -1,7 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import katex from 'katex';
 import { showErrorMessage } from '@jupyterlab/apputils';
-import { ReactWidget } from '@jupyterlab/ui-components';
+import {
+  deleteIcon,
+  editIcon,
+  LabIcon,
+  ReactWidget,
+  runIcon
+} from '@jupyterlab/ui-components';
 import { EquationLibraryApi } from '../request';
 import { IEquationRecord } from '../types';
 import { showEquationModal, showLatexInputModal } from './EquationModal';
@@ -12,6 +18,50 @@ interface IEquationLibraryPanelOptions {
 }
 
 interface IEquationViewProps extends IEquationLibraryPanelOptions {}
+
+function toPythonIdentifier(name: string): string {
+  const normalized = name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  if (!normalized) {
+    return 'equation';
+  }
+  if (/^[0-9]/.test(normalized)) {
+    return `eq_${normalized}`;
+  }
+  return normalized;
+}
+
+function buildInsertionSnippet(equation: IEquationRecord): string {
+  const lines = equation.sympy
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => line.replace(/^Eq\(/, 'sp.Eq('));
+
+  if (lines.length === 0) {
+    return equation.sympy;
+  }
+
+  // If user already authored explicit assignments, preserve as-is.
+  if (lines.some(line => /^[A-Za-z_][A-Za-z0-9_]*\s*=/.test(line))) {
+    return lines.join('\n');
+  }
+
+  const eqIndex = lines.findIndex(line => /^sp\.Eq\(/.test(line));
+  if (eqIndex === -1) {
+    return lines.join('\n');
+  }
+
+  const varName = toPythonIdentifier(equation.name);
+  const prelude = lines.slice(0, eqIndex);
+  const eqLine = lines[eqIndex];
+  const suffix = lines.slice(eqIndex + 1);
+
+  return [...prelude, `${varName} = ${eqLine}`, ...suffix, varName].join('\n');
+}
 
 function EquationCard(props: {
   equation: IEquationRecord;
@@ -35,25 +85,47 @@ function EquationCard(props: {
 
   return (
     <div className="jp-SympyEquationCard">
-      <div className="jp-SympyEquationCard-header">
-        <strong>{props.equation.name}</strong>
-      </div>
-      {latexMarkup ? (
-        <div
-          className="jp-SympyEquationCard-rendered"
-          dangerouslySetInnerHTML={{ __html: latexMarkup }}
-        />
-      ) : (
-        <pre className="jp-SympyEquationCard-fallback">{props.equation.sympy}</pre>
-      )}
-      <code className="jp-SympyEquationCard-sympy">{props.equation.sympy}</code>
-      {props.equation.description && (
-        <p className="jp-SympyEquationCard-description">{props.equation.description}</p>
-      )}
       <div className="jp-SympyEquationCard-actions">
-        <button onClick={() => props.onInsert(props.equation)}>Insert</button>
-        <button onClick={() => props.onEdit(props.equation)}>Edit</button>
-        <button onClick={() => props.onDelete(props.equation)}>Delete</button>
+        <button
+          className="jp-SympyEquationCard-iconButton"
+          onClick={() => props.onInsert(props.equation)}
+          title="Insert into active cell"
+          aria-label="Insert equation"
+        >
+          {LabIcon.resolveReact({ icon: runIcon, tag: 'span' })}
+        </button>
+        <button
+          className="jp-SympyEquationCard-iconButton"
+          onClick={() => props.onEdit(props.equation)}
+          title="Edit equation"
+          aria-label="Edit equation"
+        >
+          {LabIcon.resolveReact({ icon: editIcon, tag: 'span' })}
+        </button>
+        <button
+          className="jp-SympyEquationCard-iconButton"
+          onClick={() => props.onDelete(props.equation)}
+          title="Delete equation"
+          aria-label="Delete equation"
+        >
+          {LabIcon.resolveReact({ icon: deleteIcon, tag: 'span' })}
+        </button>
+      </div>
+      <div className="jp-SympyEquationCard-body">
+        <div className="jp-SympyEquationCard-header">
+          <strong>{props.equation.name}</strong>
+        </div>
+        {latexMarkup ? (
+          <div
+            className="jp-SympyEquationCard-rendered"
+            dangerouslySetInnerHTML={{ __html: latexMarkup }}
+          />
+        ) : (
+          <pre className="jp-SympyEquationCard-fallback">{props.equation.sympy}</pre>
+        )}
+        {props.equation.description && (
+          <p className="jp-SympyEquationCard-description">{props.equation.description}</p>
+        )}
       </div>
     </div>
   );
@@ -114,7 +186,7 @@ function EquationLibraryView({ api, onInsertSympy }: IEquationViewProps) {
   };
 
   const insertEquation = (equation: IEquationRecord) => {
-    onInsertSympy(equation.sympy);
+    onInsertSympy(buildInsertionSnippet(equation));
   };
 
   const insertFromLatex = async () => {
@@ -123,11 +195,11 @@ function EquationLibraryView({ api, onInsertSympy }: IEquationViewProps) {
       return;
     }
     try {
-      const sympy = await api.convertLatex(latex);
+      const converted = await api.convertLatex(latex);
       const draft = await showEquationModal({
         id: '',
         name: '',
-        sympy,
+        sympy: converted.code,
         latex,
         description: '',
         tags: [],

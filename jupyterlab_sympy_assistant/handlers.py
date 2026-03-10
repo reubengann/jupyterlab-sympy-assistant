@@ -1,19 +1,22 @@
 from __future__ import annotations
 
 import json
+import inspect
 from http import HTTPStatus
 
 import tornado
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 
-from .latex_parser import convert_latex_to_sympy
+from .latex_parser import convert_latex_to_bundle
 from .store import EquationLibraryStore
 
 
 class BaseEquationHandler(APIHandler):
     async def prepare(self) -> None:
-        await super().prepare()
+        maybe_awaitable = super().prepare()
+        if inspect.isawaitable(maybe_awaitable):
+            await maybe_awaitable
         self.log.debug(
             "SymPy assistant request: method=%s path=%s",
             self.request.method,
@@ -142,7 +145,7 @@ class LatexConvertHandler(BaseEquationHandler):
             return
         latex = str(body.get("latex") or "")
         try:
-            sympy_text = convert_latex_to_sympy(latex)
+            payload = convert_latex_to_bundle(latex)
         except ValueError as err:
             self.write_error_message(HTTPStatus.BAD_REQUEST, str(err))
             return
@@ -154,7 +157,7 @@ class LatexConvertHandler(BaseEquationHandler):
             self.write_error_message(HTTPStatus.BAD_REQUEST, f"Failed to parse LaTeX: {err}")
             return
 
-        self.write_json({"sympy": sympy_text})
+        self.write_json(payload)
 
 
 def setup_route_handlers(web_app) -> None:
