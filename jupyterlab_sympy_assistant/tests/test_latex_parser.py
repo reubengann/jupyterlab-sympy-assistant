@@ -19,3 +19,10 @@ def test_convert_latex_bundle_includes_symbols():
     assert bundle["symbols"] == ["V", "m", "rho", "v"]
     assert bundle["symbols_line"] == "V, m, rho, v = sp.symbols('V m rho v')"
     assert bundle["code"].startswith("V, m, rho, v = sp.symbols('V m rho v')\nsp.Eq(")
+
+
+def test_convert_latex_normalizes_subscript_symbols():
+    bundle = latex_parser.convert_latex_to_bundle(r"\theta = \theta_3 \frac{X}{X_3}")
+    assert bundle["symbols"] == ["X", "X_3", "theta", "theta_3"]
+    assert bundle["symbols_line"] == "X, X_3, theta, theta_3 = sp.symbols('X X_3 theta theta_3')"
+    assert "sp.Eq(theta, X*theta_3/X_3)" == bundle["sympy"]

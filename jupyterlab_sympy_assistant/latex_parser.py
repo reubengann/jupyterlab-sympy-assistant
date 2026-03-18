@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from typing import Any, List
 
+from sympy import Symbol
+
 
 def _parse_part(part: str):
     try:
@@ -27,6 +29,42 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
     parts = [part.strip() for part in raw.split("=") if part.strip()]
     parsed_exprs: List[Any] = [_parse_part(part) for part in parts]
 
+    def normalize_eq(text: str) -> str:
+        return re.sub(r"(?<!sp\.)Eq\(", "sp.Eq(", text)
+
+    def normalize_symbol_name(name: str) -> str:
+        # Convert latex-style subscripts: X_{3} -> X_3
+        normalized = re.sub(r"_\{([^}]+)\}", r"_\1", name)
+        # Replace remaining non-identifier chars with underscores.
+        normalized = re.sub(r"[^0-9A-Za-z_]", "_", normalized)
+        normalized = re.sub(r"_+", "_", normalized).strip("_")
+        if not normalized:
+            normalized = "sym"
+        if normalized[0].isdigit():
+            normalized = f"sym_{normalized}"
+        return normalized
+
+    # Normalize free symbol names so generated Python assignments are valid.
+    rename_map: dict[Any, Any] = {}
+    used_names: set[str] = set()
+    for expr in parsed_exprs:
+        for symbol in sorted(getattr(expr, "free_symbols", set()), key=lambda item: str(item)):
+            if symbol in rename_map:
+                continue
+            base_name = normalize_symbol_name(str(symbol))
+            candidate = base_name
+            suffix = 2
+            while candidate in used_names:
+                candidate = f"{base_name}_{suffix}"
+                suffix += 1
+            used_names.add(candidate)
+            rename_map[symbol] = Symbol(candidate)
+
+    if rename_map:
+        parsed_exprs = [
+            expr.xreplace(rename_map) if hasattr(expr, "xreplace") else expr for expr in parsed_exprs
+        ]
+
     if len(parsed_exprs) == 1:
         expressions = [parsed_exprs[0]]
     else:
@@ -35,9 +73,6 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
             f"sp.Eq({parsed_exprs[index]}, {parsed_exprs[index + 1]})"
             for index in range(len(parsed_exprs) - 1)
         ]
-
-    def normalize_eq(text: str) -> str:
-        return re.sub(r"(?<!sp\.)Eq\(", "sp.Eq(", text)
 
     sympy_text = "\n".join(normalize_eq(str(expr)) for expr in expressions)
 
