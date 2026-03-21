@@ -30,7 +30,7 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
     parsed_exprs: List[Any] = [_parse_part(part) for part in parts]
 
     def normalize_eq(text: str) -> str:
-        return re.sub(r"(?<!sp\.)Eq\(", "sp.Eq(", text)
+        return re.sub(r"(?<!spp\.)(?<!sp\.)Eq\(", "spp.Eq(", text)
 
     def normalize_symbol_name(name: str) -> str:
         # Convert latex-style subscripts: X_{3} -> X_3
@@ -70,7 +70,7 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
     else:
         # Preserve chained equalities as adjacent Eq(...) statements.
         expressions = [
-            f"sp.Eq({parsed_exprs[index]}, {parsed_exprs[index + 1]})"
+            f"spp.Eq({parsed_exprs[index]}, {parsed_exprs[index + 1]})"
             for index in range(len(parsed_exprs) - 1)
         ]
 
@@ -84,7 +84,7 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
         }
     )
     symbols_line = (
-        f"{', '.join(symbol_names)} = sp.symbols('{ ' '.join(symbol_names)}')"
+        f"{', '.join(symbol_names)} = spp.symbols('{ ' '.join(symbol_names)}')"
         if symbol_names
         else ""
     )

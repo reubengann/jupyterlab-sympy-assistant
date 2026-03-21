@@ -14,7 +14,7 @@ import { showEquationModal, showLatexInputModal } from './EquationModal';
 
 interface IEquationLibraryPanelOptions {
   api: EquationLibraryApi;
-  onInsertSympy: (sympyText: string) => void;
+  onInsertSympy: (sympyText: string, latexText: string) => void;
 }
 
 interface IEquationViewProps extends IEquationLibraryPanelOptions {}
@@ -39,7 +39,7 @@ function buildInsertionSnippet(equation: IEquationRecord): string {
     .split('\n')
     .map(line => line.trim())
     .filter(Boolean)
-    .map(line => line.replace(/^Eq\(/, 'sp.Eq('));
+    .map(line => line.replace(/^Eq\(/, 'spp.Eq('));
 
   if (lines.length === 0) {
     return equation.sympy;
@@ -50,7 +50,7 @@ function buildInsertionSnippet(equation: IEquationRecord): string {
     return lines.join('\n');
   }
 
-  const eqIndex = lines.findIndex(line => /^sp\.Eq\(/.test(line));
+  const eqIndex = lines.findIndex(line => /^spp\.Eq\(/.test(line));
   if (eqIndex === -1) {
     return lines.join('\n');
   }
@@ -186,7 +186,7 @@ function EquationLibraryView({ api, onInsertSympy }: IEquationViewProps) {
   };
 
   const insertEquation = (equation: IEquationRecord) => {
-    onInsertSympy(buildInsertionSnippet(equation));
+    onInsertSympy(buildInsertionSnippet(equation), equation.latex ?? '');
   };
 
   const insertFromLatex = async () => {

@@ -81,10 +81,10 @@ async def test_convert_latex_endpoint(jp_fetch, monkeypatch):
         handlers,
         "convert_latex_to_bundle",
         lambda latex: {
-            "sympy": "sp.Eq(rho, m/V)\nsp.Eq(m/V, 1/v)",
+            "sympy": "spp.Eq(rho, m/V)\nspp.Eq(m/V, 1/v)",
             "symbols": ["V", "m", "rho", "v"],
-            "symbols_line": "V, m, rho, v = sp.symbols('V m rho v')",
-            "code": "V, m, rho, v = sp.symbols('V m rho v')\nsp.Eq(rho, m/V)\nsp.Eq(m/V, 1/v)",
+            "symbols_line": "V, m, rho, v = spp.symbols('V m rho v')",
+            "code": "V, m, rho, v = spp.symbols('V m rho v')\nspp.Eq(rho, m/V)\nspp.Eq(m/V, 1/v)",
         },
     )
 
@@ -97,5 +97,5 @@ async def test_convert_latex_endpoint(jp_fetch, monkeypatch):
     )
     assert response.code == 200
     payload = json.loads(response.body)
-    assert payload["sympy"] == "sp.Eq(rho, m/V)\nsp.Eq(m/V, 1/v)"
+    assert payload["sympy"] == "spp.Eq(rho, m/V)\nspp.Eq(m/V, 1/v)"
     assert payload["symbols"] == ["V", "m", "rho", "v"]

@@ -18,8 +18,18 @@ const plugin: JupyterFrontEndPlugin<void> = {
   activate: (app: JupyterFrontEnd, notebooks: INotebookTracker) => {
     const commandId = 'jupyterlab-sympy-assistant:open-library';
     const api = new EquationLibraryApi(app.serviceManager.serverSettings);
+    const asMarkdownLatex = (latexText: string): string => {
+      const trimmed = latexText.trim();
+      if (!trimmed) {
+        return '';
+      }
+      if (/^\${1,2}[\s\S]*\${1,2}$/.test(trimmed)) {
+        return trimmed;
+      }
+      return `$$\n${trimmed}\n$$`;
+    };
 
-    const insertIntoActiveCell = (sympyText: string) => {
+    const insertIntoActiveCell = (sympyText: string, latexText: string) => {
       const notebookPanel = notebooks.currentWidget;
       if (!notebookPanel) {
         void showErrorMessage('No notebook is active', 'Open a notebook to insert SymPy code.');
@@ -35,14 +45,19 @@ const plugin: JupyterFrontEndPlugin<void> = {
         return;
       }
 
+      const textToInsert =
+        cell.model.type === 'markdown'
+          ? asMarkdownLatex(latexText) || sympyText
+          : sympyText;
+
       const replaceSelection = cell.editor.replaceSelection;
       if (typeof replaceSelection === 'function') {
-        replaceSelection.call(cell.editor, sympyText);
+        replaceSelection.call(cell.editor, textToInsert);
         return;
       }
 
       const current = cell.model.sharedModel.getSource();
-      cell.model.sharedModel.setSource(current + sympyText);
+      cell.model.sharedModel.setSource(current + textToInsert);
     };
 
     const panel = new EquationLibraryPanel({
