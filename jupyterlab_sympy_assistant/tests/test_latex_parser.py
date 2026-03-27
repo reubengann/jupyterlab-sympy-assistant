@@ -1,3 +1,6 @@
+import sys
+from types import SimpleNamespace
+
 import pytest
 from sympy import Function, Integral, Symbol
 
@@ -65,6 +68,18 @@ def test_convert_latex_rewrites_implicit_symbol_call(monkeypatch):
     assert bundle["sympy"] == "spp.Eq(L, f*(a - b))"
 
 
+def test_convert_latex_rewrites_powered_implicit_symbol_call(monkeypatch):
+    lhs = Symbol("c_v")
+    rhs = Function("A")(Symbol("T") / Symbol("theta")) ** 3
+    parsed = iter([lhs, rhs])
+    monkeypatch.setattr(latex_parser, "_parse_part", lambda part: next(parsed))
+
+    bundle = latex_parser.convert_latex_to_bundle(r"c_v = A \left(\frac{T}{\theta}\right)^3")
+    assert bundle["symbols"] == ["A", "T", "c_v", "theta"]
+    assert bundle["symbols_line"] == "A, T, c_v, theta = spp.symbols('A T c_v theta')"
+    assert bundle["sympy"] == "spp.Eq(c_v, A*T**3/theta**3)"
+
+
 def test_convert_latex_collapses_differential_tokens():
     bundle = latex_parser.convert_latex_to_bundle("dU = dQ - dW")
     assert bundle["symbols"] == ["dQ", "dU", "dW"]
@@ -92,3 +107,50 @@ def test_convert_latex_declares_integral_bound_variable(monkeypatch):
         == "Q, T, T_1, T_2, c, n = spp.symbols('Q T T_1 T_2 c n')"
     )
     assert bundle["sympy"] == "spp.Eq(Q, n*Integral(c, (T, T_1, T_2)))"
+
+
+def test_convert_latex_prefers_fallback_when_lark_returns_non_sympy(monkeypatch):
+    calls = {"lark": 0, "default": 0}
+
+    def fake_parse_latex(part: str, backend: str | None = None):
+        if backend == "lark":
+            calls["lark"] += 1
+            return "Tree('_ambig', [...])"
+        calls["default"] += 1
+        return Symbol("A")
+
+    monkeypatch.setitem(
+        sys.modules,
+        "sympy.parsing.latex",
+        SimpleNamespace(parse_latex=fake_parse_latex),
+    )
+    result = latex_parser._parse_part(r"A \left(\frac{T}{theta}\right)^3")
+    assert result == Symbol("A")
+    assert calls == {"lark": 1, "default": 1}
+
+
+def test_convert_latex_formula_fallbacks_after_lark_ambiguity(monkeypatch):
+    calls = {"lark": 0, "default": 0}
+    expected_expr = Symbol("A") * (Symbol("T") / Symbol("theta")) ** 3
+
+    def fake_parse_latex(part: str, backend: str | None = None):
+        if backend == "lark":
+            calls["lark"] += 1
+            if r"A \left(\frac{T}{\theta}\right)^3" in part:
+                return "Tree('_ambig', [...])"
+            return Symbol("c_v")
+        calls["default"] += 1
+        if r"A \left(\frac{T}{\theta}\right)^3" in part:
+            return expected_expr
+        return Symbol("c_v")
+
+    monkeypatch.setitem(
+        sys.modules,
+        "sympy.parsing.latex",
+        SimpleNamespace(parse_latex=fake_parse_latex),
+    )
+
+    bundle = latex_parser.convert_latex_to_bundle(r"c_v = A \left(\frac{T}{\theta}\right)^3")
+    assert calls == {"lark": 2, "default": 1}
+    assert bundle["symbols"] == ["A", "T", "c_v", "theta"]
+    assert bundle["sympy"] == "spp.Eq(c_v, A*T**3/theta**3)"

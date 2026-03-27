@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any, List, cast
 
-from sympy import Basic, Mul, Symbol
+from sympy import Basic, Mul, Pow, Symbol
 from sympy.core.function import AppliedUndef
 
 
@@ -14,11 +14,16 @@ def _parse_part(part: str):
         raise RuntimeError("LaTeX parsing requires sympy in the active environment.") from err
 
     # Prefer the Lark backend because it avoids the fragile antlr4 runtime pin.
+    # If Lark yields a non-SymPy parse artifact (e.g. an ambiguity tree),
+    # fall back to the default backend.
     parse_latex_any = cast(Any, parse_latex)
     try:
-        return parse_latex_any(part, backend="lark")
+        parsed = parse_latex_any(part, backend="lark")
+        if isinstance(parsed, (Basic, tuple)):
+            return parsed
     except Exception:
-        return parse_latex_any(part)
+        pass
+    return parse_latex_any(part)
 
 
 def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
@@ -51,15 +56,32 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
         if not isinstance(expr, Basic):
             return expr
 
-        def rewrite_call(node: Any) -> Any:
+        def parse_callable_name(node: Any) -> str:
             if not isinstance(node, AppliedUndef) or len(node.args) != 1:
-                return node
+                return ""
             func_name = getattr(node.func, "__name__", "")
             if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", func_name):
+                return ""
+            return str(func_name)
+
+        def rewrite_pow_call(node: Any) -> Any:
+            if not isinstance(node, Pow):
+                return node
+            base, exponent = node.args
+            func_name = parse_callable_name(base)
+            if not func_name:
+                return node
+            argument = cast(Any, base.args[0])
+            return cast(Any, Symbol(func_name) * (argument**exponent))
+
+        def rewrite_call(node: Any) -> Any:
+            func_name = parse_callable_name(node)
+            if not func_name:
                 return node
             argument = cast(Any, node.args[0])
             return cast(Any, Symbol(func_name) * argument)
 
+        expr = expr.replace(lambda node: isinstance(node, Pow), rewrite_pow_call)
         return expr.replace(lambda node: isinstance(node, AppliedUndef), rewrite_call)
 
     def collapse_wrapper_symbol_products(expr: Any) -> Any:

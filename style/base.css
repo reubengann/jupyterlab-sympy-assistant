@@ -20,7 +20,17 @@
 
 .jp-SympyEquationPanel-headerButtons {
   display: flex;
+  align-items: center;
   gap: 6px;
+}
+
+.jp-SympyEquationPanel-headerIconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
 }
 
 .jp-SympyEquationPanel-list {

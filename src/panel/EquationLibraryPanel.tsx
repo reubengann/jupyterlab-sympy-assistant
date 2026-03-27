@@ -11,6 +11,18 @@ import {
 import { EquationLibraryApi } from '../request';
 import { IEquationRecord } from '../types';
 import { showEquationModal, showLatexInputModal } from './EquationModal';
+import functionSvg from '../../style/icons/function.svg';
+import addBoxSvg from '../../style/icons/addbox.svg';
+
+const sympyLibraryIcon = new LabIcon({
+  name: 'jupyterlab-sympy-assistant:function',
+  svgstr: functionSvg
+});
+
+const addFromLatexIcon = new LabIcon({
+  name: 'jupyterlab-sympy-assistant:addbox',
+  svgstr: addBoxSvg
+});
 
 interface IEquationLibraryPanelOptions {
   api: EquationLibraryApi;
@@ -150,19 +162,6 @@ function EquationLibraryView({ api, onInsertSympy }: IEquationViewProps) {
     void refresh();
   }, []);
 
-  const createEquation = async () => {
-    const draft = await showEquationModal();
-    if (!draft) {
-      return;
-    }
-    try {
-      await api.create(draft);
-      await refresh();
-    } catch (error) {
-      await showErrorMessage('Failed to create equation', String(error));
-    }
-  };
-
   const editEquation = async (equation: IEquationRecord) => {
     const draft = await showEquationModal(equation);
     if (!draft) {
@@ -216,13 +215,33 @@ function EquationLibraryView({ api, onInsertSympy }: IEquationViewProps) {
     }
   };
 
+  const convertLatexToCell = async () => {
+    const latex = await showLatexInputModal();
+    if (!latex) {
+      return;
+    }
+    try {
+      const converted = await api.convertLatex(latex);
+      onInsertSympy(converted.code, latex);
+    } catch (error) {
+      await showErrorMessage('Failed to convert LaTeX', String(error));
+    }
+  };
+
   return (
     <div className="jp-SympyEquationPanel">
       <div className="jp-SympyEquationPanel-header">
         <h3>SymPy Equation Library</h3>
         <div className="jp-SympyEquationPanel-headerButtons">
-          <button onClick={() => void insertFromLatex()}>Add from LaTeX</button>
-          <button onClick={() => void createEquation()}>Add Equation</button>
+          <button
+            className="jp-SympyEquationPanel-headerIconButton"
+            onClick={() => void insertFromLatex()}
+            title="Add from LaTeX"
+            aria-label="Add from LaTeX"
+          >
+            {LabIcon.resolveReact({ icon: addFromLatexIcon, tag: 'span' })}
+          </button>
+          <button onClick={() => void convertLatexToCell()}>Convert</button>
         </div>
       </div>
       {loading ? (
@@ -250,7 +269,9 @@ export class EquationLibraryPanel extends ReactWidget {
   constructor(private options: IEquationLibraryPanelOptions) {
     super();
     this.id = 'jupyterlab-sympy-assistant:library-panel';
-    this.title.label = 'SymPy Library';
+    this.title.label = '';
+    this.title.caption = 'SymPy Library';
+    this.title.icon = sympyLibraryIcon;
     this.title.closable = false;
     this.addClass('jp-SympyEquationSidebar');
   }
