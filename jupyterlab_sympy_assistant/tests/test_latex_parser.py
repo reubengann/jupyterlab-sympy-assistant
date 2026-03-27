@@ -1,5 +1,5 @@
 import pytest
-from sympy import Function, Symbol
+from sympy import Function, Integral, Symbol
 
 from jupyterlab_sympy_assistant import latex_parser
 
@@ -63,3 +63,32 @@ def test_convert_latex_rewrites_implicit_symbol_call(monkeypatch):
     assert bundle["symbols"] == ["L", "a", "b", "f"]
     assert bundle["symbols_line"] == "L, a, b, f = spp.symbols('L a b f')"
     assert bundle["sympy"] == "spp.Eq(L, f*(a - b))"
+
+
+def test_convert_latex_collapses_differential_tokens():
+    bundle = latex_parser.convert_latex_to_bundle("dU = dQ - dW")
+    assert bundle["symbols"] == ["dQ", "dU", "dW"]
+    assert bundle["symbols_line"] == "dQ, dU, dW = spp.symbols('dQ dU dW')"
+    assert bundle["sympy"] == "spp.Eq(dU, dQ - dW)"
+
+
+def test_convert_latex_normalizes_apostrophe_differentials():
+    bundle = latex_parser.convert_latex_to_bundle("dU = d'Q - d'W")
+    assert bundle["symbols"] == ["dQ", "dU", "dW"]
+    assert bundle["symbols_line"] == "dQ, dU, dW = spp.symbols('dQ dU dW')"
+    assert bundle["sympy"] == "spp.Eq(dU, dQ - dW)"
+
+
+def test_convert_latex_declares_integral_bound_variable(monkeypatch):
+    lhs = Symbol("Q")
+    rhs = Symbol("n") * Integral(Symbol("c"), (Symbol("T"), Symbol("T_1"), Symbol("T_2")))
+    parsed = iter([lhs, rhs])
+    monkeypatch.setattr(latex_parser, "_parse_part", lambda part: next(parsed))
+
+    bundle = latex_parser.convert_latex_to_bundle(r"Q = n \int_{T_1}^{T_2} c \, dT")
+    assert bundle["symbols"] == ["Q", "T", "T_1", "T_2", "c", "n"]
+    assert (
+        bundle["symbols_line"]
+        == "Q, T, T_1, T_2, c, n = spp.symbols('Q T T_1 T_2 c n')"
+    )
+    assert bundle["sympy"] == "spp.Eq(Q, n*Integral(c, (T, T_1, T_2)))"

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, List
+from typing import Any, List, cast
 
 from sympy import Basic, Mul, Symbol
 from sympy.core.function import AppliedUndef
@@ -14,10 +14,11 @@ def _parse_part(part: str):
         raise RuntimeError("LaTeX parsing requires sympy in the active environment.") from err
 
     # Prefer the Lark backend because it avoids the fragile antlr4 runtime pin.
+    parse_latex_any = cast(Any, parse_latex)
     try:
-        return parse_latex(part, backend="lark")
+        return parse_latex_any(part, backend="lark")
     except Exception:
-        return parse_latex(part)
+        return parse_latex_any(part)
 
 
 def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
@@ -26,9 +27,23 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
         raise ValueError("Field 'latex' is required.")
     # Handle common copy/paste form where slashes are double-escaped.
     raw = raw.replace("\\\\", "\\")
+    # Common thermo shorthand: d'Q, d'W -> dQ, dW.
+    raw = re.sub(r"\bd'\s*([A-Za-z][A-Za-z0-9_]*)", r"d\1", raw)
 
     parts = [part.strip() for part in raw.split("=") if part.strip()]
     parsed_exprs: List[Any] = [_parse_part(part) for part in parts]
+
+    def collapse_differential_tuples(expr: Any) -> Any:
+        # parse_latex may read a standalone token like "dU" as tuple (d, U).
+        # For thermodynamics notation, treat this as a single symbol dU.
+        if (
+            isinstance(expr, tuple)
+            and len(expr) == 2
+            and all(getattr(item, "is_Symbol", False) for item in expr)
+            and str(expr[0]) == "d"
+        ):
+            return Symbol(f"d{expr[1]}")
+        return expr
 
     def collapse_implicit_symbol_calls(expr: Any) -> Any:
         # parse_latex may read "f (x)" as an undefined function call f(x).
@@ -42,7 +57,8 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
             func_name = getattr(node.func, "__name__", "")
             if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", func_name):
                 return node
-            return Symbol(func_name) * node.args[0]
+            argument = cast(Any, node.args[0])
+            return cast(Any, Symbol(func_name) * argument)
 
         return expr.replace(lambda node: isinstance(node, AppliedUndef), rewrite_call)
 
@@ -77,6 +93,7 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
 
         return expr.replace(lambda node: isinstance(node, Mul), merge_mul)
 
+    parsed_exprs = [collapse_differential_tuples(expr) for expr in parsed_exprs]
     parsed_exprs = [collapse_implicit_symbol_calls(expr) for expr in parsed_exprs]
     parsed_exprs = [collapse_wrapper_symbol_products(expr) for expr in parsed_exprs]
 
@@ -127,11 +144,16 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
                 return f"\\{command}{{{wrapped}}}"
         return name
 
-    # Normalize free symbol names so generated Python assignments are valid.
+    def extract_declared_symbols(expr: Any) -> set[Symbol]:
+        if isinstance(expr, Basic):
+            return {symbol for symbol in expr.atoms(Symbol)}
+        return set()
+
+    # Normalize symbol names so generated Python assignments are valid.
     rename_map: dict[Any, Any] = {}
     used_names: set[str] = set()
     for expr in parsed_exprs:
-        for symbol in sorted(getattr(expr, "free_symbols", set()), key=lambda item: str(item)):
+        for symbol in sorted(extract_declared_symbols(expr), key=lambda item: str(item)):
             if symbol in rename_map:
                 continue
             base_name = normalize_symbol_name(str(symbol))
@@ -163,12 +185,13 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
         {
             str(symbol)
             for expr in parsed_exprs
-            for symbol in getattr(expr, "free_symbols", set())
+            for symbol in extract_declared_symbols(expr)
         }
     )
     symbol_literal_names = [to_latex_symbol_name(name) for name in symbol_names]
     symbols_literal = " ".join(symbol_literal_names)
-    symbols_literal_text = f"'{symbols_literal.replace('\\', '\\\\')}'"
+    escaped_symbols_literal = symbols_literal.replace("\\", "\\\\")
+    symbols_literal_text = f"'{escaped_symbols_literal}'"
     symbols_line = (
         f"{', '.join(symbol_names)} = spp.symbols({symbols_literal_text})"
         if symbol_names
