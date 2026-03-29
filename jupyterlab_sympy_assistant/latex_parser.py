@@ -34,6 +34,16 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
     raw = raw.replace("\\\\", "\\")
     # Common thermo shorthand: d'Q, d'W -> dQ, dW.
     raw = re.sub(r"\bd'\s*([A-Za-z][A-Za-z0-9_]*)", r"d\1", raw)
+    # Keep text subscripts as atomic names by converting them to one-token commands:
+    # T_\text{boil} -> T_{\boil}. SymPy then parses this as T_{boil}.
+    def rewrite_text_subscript(match: re.Match[str]) -> str:
+        label = match.group(1).strip()
+        command = re.sub(r"[^A-Za-z]", "", label)
+        if not command:
+            command = "text"
+        return f"_{{\\{command}}}"
+
+    raw = re.sub(r"_\\text\s*\{([^{}]+)\}", rewrite_text_subscript, raw)
 
     parts = [part.strip() for part in raw.split("=") if part.strip()]
     parsed_exprs: List[Any] = [_parse_part(part) for part in parts]
@@ -60,7 +70,7 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
             if not isinstance(node, AppliedUndef) or len(node.args) != 1:
                 return ""
             func_name = getattr(node.func, "__name__", "")
-            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", func_name):
+            if not func_name:
                 return ""
             return str(func_name)
 
@@ -103,14 +113,51 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
                 return node
             symbol_args = [arg for arg in node.args if getattr(arg, "is_Symbol", False)]
             wrapper_symbols = [arg for arg in symbol_args if str(arg) in wrappers]
-            wrapped_symbols = [arg for arg in symbol_args if str(arg) not in wrappers]
-            if len(wrapper_symbols) != 1 or len(wrapped_symbols) != 1:
+            if len(wrapper_symbols) != 1:
                 return node
 
             wrapper = wrapper_symbols[0]
-            wrapped = wrapped_symbols[0]
+            wrapped: Any | None = None
+            nested_mul_arg: Any | None = None
+
+            direct_wrapped_symbols = [
+                arg
+                for arg in symbol_args
+                if str(arg) not in wrappers and arg is not wrapper
+            ]
+            if len(direct_wrapped_symbols) == 1:
+                wrapped = direct_wrapped_symbols[0]
+            elif len(direct_wrapped_symbols) == 0:
+                for arg in node.args:
+                    if not isinstance(arg, Mul):
+                        continue
+                    nested_symbols = [
+                        item
+                        for item in arg.args
+                        if getattr(item, "is_Symbol", False) and str(item) not in wrappers
+                    ]
+                    if len(nested_symbols) == 1:
+                        wrapped = nested_symbols[0]
+                        nested_mul_arg = arg
+                        break
+
+            if wrapped is None:
+                return node
+
             merged = Symbol(f"{wrapper}{wrapped}")
-            kept_args = [arg for arg in node.args if arg not in {wrapper, wrapped}]
+            kept_args: list[Any] = []
+            for arg in node.args:
+                if arg == wrapper:
+                    continue
+                if nested_mul_arg is not None and arg == nested_mul_arg:
+                    remaining_nested_args = [
+                        item for item in nested_mul_arg.args if item != wrapped
+                    ]
+                    kept_args.extend(remaining_nested_args)
+                    continue
+                if nested_mul_arg is None and arg == wrapped:
+                    continue
+                kept_args.append(arg)
             return Mul(merged, *kept_args)
 
         return expr.replace(lambda node: isinstance(node, Mul), merge_mul)
@@ -164,6 +211,11 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
                 continue
             if re.fullmatch(r"[A-Za-z0-9_]+", wrapped):
                 return f"\\{command}{{{wrapped}}}"
+        subscript_match = re.fullmatch(r"([A-Za-z][A-Za-z0-9]*)_([A-Za-z][A-Za-z0-9]*)", name)
+        if subscript_match:
+            base, subscript = subscript_match.groups()
+            if subscript.isalpha() and len(subscript) > 1:
+                return f"{base}_\\text{{{subscript}}}"
         return name
 
     def extract_declared_symbols(expr: Any) -> set[Symbol]:

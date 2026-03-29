@@ -154,3 +154,15 @@ def test_convert_latex_formula_fallbacks_after_lark_ambiguity(monkeypatch):
     assert calls == {"lark": 2, "default": 1}
     assert bundle["symbols"] == ["A", "T", "c_v", "theta"]
     assert bundle["sympy"] == "spp.Eq(c_v, A*T**3/theta**3)"
+
+
+def test_convert_latex_preserves_text_subscripts_and_mathscr_symbols():
+    bundle = latex_parser.convert_latex_to_bundle(
+        r"m c_P (T_\text{boil} - T_\text{melt}) = \mathscr{P} (t_4 - t_3)"
+    )
+    assert bundle["symbols"] == ["T_boil", "T_melt", "c_P", "m", "mathscrP", "t_3", "t_4"]
+    assert (
+        bundle["symbols_line"]
+        == "T_boil, T_melt, c_P, m, mathscrP, t_3, t_4 = spp.symbols('T_\\\\text{boil} T_\\\\text{melt} c_P m \\\\mathscr{P} t_3 t_4')"
+    )
+    assert bundle["sympy"] == "spp.Eq(c_P*m*(T_boil - T_melt), mathscrP*(-t_3 + t_4))"
