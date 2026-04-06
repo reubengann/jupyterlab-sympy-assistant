@@ -14,6 +14,16 @@ def _parse_part(part: str):
         raise RuntimeError("LaTeX parsing requires sympy in the active environment.") from err
 
     # Prefer the Lark backend because it avoids the fragile antlr4 runtime pin.
+    # For wrapped symbols with explicit subscripts (e.g. \mathscr{V}_2),
+    # Lark can silently drop terms, so force the default backend.
+    if re.search(
+        r"\\(?:mathscr|mathcal|mathbf|mathrm|mathit|mathsf|mathtt|boldsymbol)\s*\{[^{}]+\}\s*_",
+        part,
+    ):
+        return cast(Any, parse_latex)(part)
+    if re.search(r"\bZ_\{\d{6,}\}", part):
+        return cast(Any, parse_latex)(part)
+
     # If Lark yields a non-SymPy parse artifact (e.g. an ambiguity tree),
     # fall back to the default backend.
     parse_latex_any = cast(Any, parse_latex)
@@ -34,19 +44,133 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
     raw = raw.replace("\\\\", "\\")
     # Common thermo shorthand: d'Q, d'W -> dQ, dW.
     raw = re.sub(r"\bd'\s*([A-Za-z][A-Za-z0-9_]*)", r"d\1", raw)
+    # Normalize differential notation that SymPy misparses:
+    # \mathrm{d}{T} -> \mathrm{d}T
+    raw = re.sub(r"\\mathrm\s*\{\s*d\s*\}\s*\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}", r"\\mathrm{d}\1", raw)
+
+    def sanitize_text_label(label: str) -> str:
+        cleaned = re.sub(r"[^A-Za-z0-9]", "", label.strip())
+        return cleaned or "text"
+
+    delta_placeholders: dict[str, str] = {}
+    delta_symbol_literals: dict[str, str] = {}
+    delta_index = 0
+
+    def rewrite_delta_symbol(match: re.Match[str]) -> str:
+        nonlocal delta_index
+        token = (match.group(1) or match.group(2) or "").strip()
+        if not token or not token[0].isupper():
+            return match.group(0)
+        token_name = re.sub(r"[^0-9A-Za-z_]", "_", token)
+        token_name = re.sub(r"_+", "_", token_name).strip("_")
+        if not token_name:
+            token_name = "sym"
+        if token_name[0].isdigit():
+            token_name = f"sym_{token_name}"
+        python_name = f"d{token_name}"
+        placeholder = f"Z_{{{940000 + delta_index}}}"
+        delta_index += 1
+        delta_placeholders[placeholder] = python_name
+        delta_symbol_literals[python_name] = rf"\Delta {token}"
+        return placeholder
+
+    raw = re.sub(
+        r"\\Delta\s*(?:\{([^{}]+)\}|([A-Za-z][A-Za-z0-9_]*))",
+        rewrite_delta_symbol,
+        raw,
+    )
+
+    text_subscript_symbol_names: set[str] = set()
+    for match in re.finditer(
+        r"([A-Za-z][A-Za-z0-9]*)\s*_\s*(?:\\text\s*\{([^{}]+)\}|\{\s*\\text\s*\{([^{}]+)\}\s*\})",
+        raw,
+    ):
+        base = match.group(1)
+        label = sanitize_text_label(match.group(2) or match.group(3) or "")
+        text_subscript_symbol_names.add(f"{base}_{label}")
+
+    constrained_partial_placeholders: dict[str, str] = {}
+    constrained_partial_specs: dict[str, tuple[str, str, str]] = {}
+    constrained_partial_index = 0
+
+    def rewrite_constrained_partial(match: re.Match[str]) -> str:
+        nonlocal constrained_partial_index
+        dependent = sanitize_text_label(
+            (match.group("dep_braced") or match.group("dep_bare") or "")
+        )
+        wrt = sanitize_text_label((match.group("wrt_braced") or match.group("wrt_bare") or ""))
+        hold_text = match.group("hold_text") or match.group("hold_text_braced")
+        hold_braced = match.group("hold_braced")
+        hold_bare = match.group("hold_bare")
+        hold_command = match.group("hold_cmd")
+        hold_raw = hold_text or hold_braced or hold_bare or hold_command or ""
+        hold = sanitize_text_label(hold_raw)
+        partial_symbol_name = f"partial_{dependent}_{wrt}_{hold}"
+        placeholder_id = 930000 + constrained_partial_index
+        placeholder = f"Z_{{{placeholder_id}}}"
+        constrained_partial_index += 1
+        constrained_partial_placeholders[placeholder] = partial_symbol_name
+        constrained_partial_specs[partial_symbol_name] = (dependent, wrt, hold)
+        return placeholder
+
+    # SymPy's LaTeX parser often drops constrained partial derivative factors.
+    # Rewrite them to parser-safe placeholders and restore semantic names later.
+    raw = re.sub(
+        r"(?:\\left\()?\s*\\(?:d?frac)\s*\{\s*\\partial\s*(?:\{(?P<dep_braced>[^{}]+)\}|(?P<dep_bare>[A-Za-z0-9]+))\s*\}\s*\{\s*\\partial\s*(?:\{(?P<wrt_braced>[^{}]+)\}|(?P<wrt_bare>[A-Za-z0-9]+))\s*\}\s*(?:\\right\))?\s*_\s*(?:\\text\s*\{(?P<hold_text>[^{}]+)\}|\{\s*\\text\s*\{(?P<hold_text_braced>[^{}]+)\}\s*\}|\{(?P<hold_braced>[^{}]+)\}|(?P<hold_bare>[A-Za-z0-9]+)|\\(?P<hold_cmd>[A-Za-z]+))",
+        rewrite_constrained_partial,
+        raw,
+    )
+
+    wrapper_text_subscript_placeholders: dict[str, str] = {}
+    wrapper_text_subscript_index = 0
+
+    def rewrite_wrapper_with_subscript(match: re.Match[str]) -> str:
+        nonlocal wrapper_text_subscript_index
+        wrapper = match.group(1)
+        base = re.sub(r"[^A-Za-z0-9]", "", match.group(2))
+        text_label = match.group(3) or match.group(4)
+        braced_label = match.group(5)
+        bare_label = match.group(6)
+        raw_label = text_label or braced_label or bare_label or ""
+        label = sanitize_text_label(raw_label)
+        placeholder_id = 910000 + wrapper_text_subscript_index
+        placeholder = f"Z_{{{placeholder_id}}}"
+        wrapper_text_subscript_index += 1
+        wrapper_text_subscript_placeholders[placeholder] = f"{wrapper}{base}_{label}"
+        return placeholder
+
+    # SymPy's LaTeX parser can fail on wrapped symbols with subscripts such as
+    # \mathscr{F}_\text{fric.} or \mathscr{V}_2. Rewrite these to parser-safe
+    # placeholders and restore semantic symbol names after parsing.
+    raw = re.sub(
+        r"\\(mathscr|mathcal|mathbf|mathrm|mathit|mathsf|mathtt|boldsymbol)\s*\{([^{}]+)\}\s*_\s*(?:\\text\s*\{([^{}]+)\}|\{\s*\\text\s*\{([^{}]+)\}\s*\}|\{([^{}]+)\}|([A-Za-z0-9]+))",
+        rewrite_wrapper_with_subscript,
+        raw,
+    )
+
     # Keep text subscripts as atomic names by converting them to one-token commands:
     # T_\text{boil} -> T_{\boil}. SymPy then parses this as T_{boil}.
     def rewrite_text_subscript(match: re.Match[str]) -> str:
-        label = match.group(1).strip()
-        command = re.sub(r"[^A-Za-z]", "", label)
-        if not command:
-            command = "text"
+        command = sanitize_text_label(match.group(1))
         return f"_{{\\{command}}}"
 
     raw = re.sub(r"_\\text\s*\{([^{}]+)\}", rewrite_text_subscript, raw)
 
     parts = [part.strip() for part in raw.split("=") if part.strip()]
     parsed_exprs: List[Any] = [_parse_part(part) for part in parts]
+    all_placeholders: dict[str, str] = {}
+    all_placeholders.update(delta_placeholders)
+    all_placeholders.update(wrapper_text_subscript_placeholders)
+    all_placeholders.update(constrained_partial_placeholders)
+    if all_placeholders:
+        placeholder_map = {
+            Symbol(placeholder): Symbol(target)
+            for placeholder, target in all_placeholders.items()
+        }
+        parsed_exprs = [
+            expr.xreplace(placeholder_map) if hasattr(expr, "xreplace") else expr
+            for expr in parsed_exprs
+        ]
 
     def collapse_differential_tuples(expr: Any) -> Any:
         # parse_latex may read a standalone token like "dU" as tuple (d, U).
@@ -203,18 +327,38 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
         return normalized
 
     def to_latex_symbol_name(name: str) -> str:
+        constrained_partial_match = re.fullmatch(
+            r"partial_([A-Za-z0-9]+)_([A-Za-z0-9]+)_([A-Za-z0-9]+)", name
+        )
+        if constrained_partial_match:
+            dependent, wrt, hold = constrained_partial_match.groups()
+            hold_latex = hold
+            if hold.isalpha() and len(hold) > 1:
+                hold_latex = f"\\text{{{hold}}}"
+            return (
+                f"\\left(\\frac{{\\partial {dependent}}}{{\\partial {wrt}}}\\right)"
+                f"_{{{hold_latex}}}"
+            )
         for command in latex_wrapper_commands:
             if not name.startswith(command):
                 continue
             wrapped = name[len(command) :]
             if not wrapped:
                 continue
+            wrapped_subscript_match = re.fullmatch(
+                r"([A-Za-z0-9]+)_([A-Za-z0-9]+)", wrapped
+            )
+            if wrapped_subscript_match:
+                wrapped_base, wrapped_subscript = wrapped_subscript_match.groups()
+                if wrapped_subscript.isalpha() and len(wrapped_subscript) > 1:
+                    return f"\\{command}{{{wrapped_base}}}_\\text{{{wrapped_subscript}}}"
+                return f"\\{command}{{{wrapped_base}}}_{{{wrapped_subscript}}}"
             if re.fullmatch(r"[A-Za-z0-9_]+", wrapped):
                 return f"\\{command}{{{wrapped}}}"
         subscript_match = re.fullmatch(r"([A-Za-z][A-Za-z0-9]*)_([A-Za-z][A-Za-z0-9]*)", name)
         if subscript_match:
             base, subscript = subscript_match.groups()
-            if subscript.isalpha() and len(subscript) > 1:
+            if name in text_subscript_symbol_names and subscript.isalpha() and len(subscript) > 1:
                 return f"{base}_\\text{{{subscript}}}"
         return name
 
@@ -255,22 +399,49 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
 
     sympy_text = "\n".join(normalize_eq(str(expr)) for expr in expressions)
 
+    for partial_symbol_name, (dependent, wrt, hold) in constrained_partial_specs.items():
+        partial_call = f"spp.partial({dependent}, {wrt}, hold={hold})"
+        sympy_text = re.sub(
+            rf"(?<![A-Za-z0-9_]){re.escape(partial_symbol_name)}(?![A-Za-z0-9_])",
+            partial_call,
+            sympy_text,
+        )
+
+    symbol_names_set = {
+        str(symbol)
+        for expr in parsed_exprs
+        for symbol in extract_declared_symbols(expr)
+    }
+    for partial_symbol_name, (dependent, wrt, hold) in constrained_partial_specs.items():
+        if partial_symbol_name in symbol_names_set:
+            symbol_names_set.remove(partial_symbol_name)
+            symbol_names_set.update({dependent, wrt, hold})
+
     symbol_names = sorted(
         {
-            str(symbol)
-            for expr in parsed_exprs
-            for symbol in extract_declared_symbols(expr)
+            symbol_name
+            for symbol_name in symbol_names_set
         }
     )
-    symbol_literal_names = [to_latex_symbol_name(name) for name in symbol_names]
+    delta_symbol_names = sorted(name for name in symbol_names if name in delta_symbol_literals)
+    regular_symbol_names = sorted(name for name in symbol_names if name not in delta_symbol_literals)
+    symbol_literal_names = [to_latex_symbol_name(name) for name in regular_symbol_names]
     symbols_literal = " ".join(symbol_literal_names)
     escaped_symbols_literal = symbols_literal.replace("\\", "\\\\")
     symbols_literal_text = f"'{escaped_symbols_literal}'"
-    symbols_line = (
-        f"{', '.join(symbol_names)} = spp.symbols({symbols_literal_text})"
-        if symbol_names
+    regular_symbols_line = (
+        f"{', '.join(regular_symbol_names)} = spp.symbols({symbols_literal_text})"
+        if regular_symbol_names
         else ""
     )
+    delta_symbol_lines: list[str] = []
+    for name in delta_symbol_names:
+        escaped_delta_literal = delta_symbol_literals[name].replace("\\", "\\\\")
+        delta_symbol_lines.append(f"{name} = spp.Symbol('{escaped_delta_literal}')")
+    declaration_lines = [*delta_symbol_lines]
+    if regular_symbols_line:
+        declaration_lines.append(regular_symbols_line)
+    symbols_line = "\n".join(declaration_lines)
     code = f"{symbols_line}\n{sympy_text}" if symbols_line else sympy_text
 
     return {

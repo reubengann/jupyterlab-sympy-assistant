@@ -166,3 +166,84 @@ def test_convert_latex_preserves_text_subscripts_and_mathscr_symbols():
         == "T_boil, T_melt, c_P, m, mathscrP, t_3, t_4 = spp.symbols('T_\\\\text{boil} T_\\\\text{melt} c_P m \\\\mathscr{P} t_3 t_4')"
     )
     assert bundle["sympy"] == "spp.Eq(c_P*m*(T_boil - T_melt), mathscrP*(-t_3 + t_4))"
+
+
+def test_convert_latex_keeps_plain_letter_subscripts_non_text():
+    bundle = latex_parser.convert_latex_to_bundle(r"q_{acb} - w_{acb} = q_{ab} - w_{ab}")
+    assert bundle["symbols"] == ["q_ab", "q_acb", "w_ab", "w_acb"]
+    assert (
+        bundle["symbols_line"]
+        == "q_ab, q_acb, w_ab, w_acb = spp.symbols('q_ab q_acb w_ab w_acb')"
+    )
+    assert bundle["sympy"] == "spp.Eq(q_acb - w_acb, q_ab - w_ab)"
+
+
+def test_convert_latex_handles_mathscr_with_text_subscript_in_integral():
+    bundle = latex_parser.convert_latex_to_bundle(
+        r"W = \int_{x_0}^{0.9 x_0} \left[\frac{n R T}{x} + \mathscr{F}_\text{fric.}\right] \, dx"
+    )
+    assert bundle["symbols"] == ["R", "T", "W", "mathscrF_fric", "n", "x", "x_0"]
+    assert (
+        bundle["symbols_line"]
+        == "R, T, W, mathscrF_fric, n, x, x_0 = spp.symbols('R T W \\\\mathscr{F}_\\\\text{fric} n x x_0')"
+    )
+    assert bundle["sympy"] == "spp.Eq(W, Integral(R*T*n/x + mathscrF_fric, (x, x_0, 0.9*x_0)))"
+
+
+def test_convert_latex_preserves_mathscr_numeric_subscripts_in_kinetic_term():
+    bundle = latex_parser.convert_latex_to_bundle(
+        r"\Delta h = - w_\text{sh} - \frac12 (\mathscr{V}_2^2 - \mathscr{V}_1^2)"
+    )
+    assert bundle["symbols"] == ["Delta", "h", "mathscrV_1", "mathscrV_2", "w_sh"]
+    assert (
+        bundle["symbols_line"]
+        == "Delta, h, mathscrV_1, mathscrV_2, w_sh = spp.symbols('Delta h \\\\mathscr{V}_{1} \\\\mathscr{V}_{2} w_\\\\text{sh}')"
+    )
+    assert bundle["sympy"] == "spp.Eq(Delta*h, mathscrV_1**2/2 - mathscrV_2**2/2 - w_sh)"
+
+
+def test_convert_latex_preserves_constrained_partials_in_products():
+    bundle = latex_parser.convert_latex_to_bundle(
+        r"c_P = c_v + \left[\left(\dfrac{\partial u}{\partial v}\right)_T  + P \right] \left(\dfrac{\partial v}{\partial T}\right)_P"
+    )
+    assert bundle["symbols"] == ["P", "T", "c_P", "c_v", "u", "v"]
+    assert (
+        bundle["symbols_line"]
+        == "P, T, c_P, c_v, u, v = spp.symbols('P T c_P c_v u v')"
+    )
+    assert bundle["sympy"] == "spp.Eq(c_P, c_v + spp.partial(v, T, hold=P)*(P + spp.partial(u, v, hold=T)))"
+
+
+def test_convert_latex_preserves_braced_constrained_partial():
+    bundle = latex_parser.convert_latex_to_bundle(
+        r"c_{P} = \left(\frac{\partial{h}}{\partial{T}}\right)_{P}"
+    )
+    assert bundle["symbols"] == ["P", "T", "c_P", "h"]
+    assert bundle["symbols_line"] == "P, T, c_P, h = spp.symbols('P T c_P h')"
+    assert bundle["sympy"] == "spp.Eq(c_P, spp.partial(h, T, hold=P))"
+
+
+def test_convert_latex_normalizes_braced_roman_differentials_in_integrals():
+    bundle = latex_parser.convert_latex_to_bundle(
+        r"-\int_{T_{1}}^{T_{2}} \,\mathrm{d}{T} = \int_{V}^{2 V} \frac{a}{c_{v} v^{2}} \,\mathrm{d}{v}"
+    )
+    assert bundle["symbols"] == ["T", "T_1", "T_2", "V", "a", "c_v", "v"]
+    assert bundle["symbols_line"] == "T, T_1, T_2, V, a, c_v, v = spp.symbols('T T_1 T_2 V a c_v v')"
+    assert (
+        bundle["sympy"]
+        == "spp.Eq(-Integral(1, (T, T_1, T_2)), Integral(a/(c_v*v**2), (v, V, 2*V)))"
+    )
+
+
+def test_convert_latex_declares_delta_symbols_as_atomic():
+    bundle = latex_parser.convert_latex_to_bundle(
+        r"\Delta Q = n c_v \Delta T + \frac{n c_v T_0}{2}"
+    )
+    assert bundle["symbols"] == ["T_0", "c_v", "dQ", "dT", "n"]
+    assert (
+        bundle["symbols_line"]
+        == "dQ = spp.Symbol('\\\\Delta Q')\n"
+        "dT = spp.Symbol('\\\\Delta T')\n"
+        "T_0, c_v, n = spp.symbols('T_0 c_v n')"
+    )
+    assert bundle["sympy"] == "spp.Eq(dQ, T_0*c_v*n/2 + c_v*dT*n)"
