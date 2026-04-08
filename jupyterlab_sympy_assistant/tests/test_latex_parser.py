@@ -247,3 +247,10 @@ def test_convert_latex_declares_delta_symbols_as_atomic():
         "T_0, c_v, n = spp.symbols('T_0 c_v n')"
     )
     assert bundle["sympy"] == "spp.Eq(dQ, T_0*c_v*n/2 + c_v*dT*n)"
+
+
+def test_convert_latex_handles_apostrophe_and_nested_differentials():
+    bundle = latex_parser.convert_latex_to_bundle(r"d'q = dh - v \, dP")
+    assert bundle["symbols"] == ["dP", "dh", "dq", "v"]
+    assert bundle["symbols_line"] == "dP, dh, dq, v = spp.symbols('dP dh dq v')"
+    assert bundle["sympy"] == "spp.Eq(dq, -dP*v + dh)"

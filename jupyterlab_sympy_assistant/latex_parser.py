@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any, List, cast
 
-from sympy import Basic, Mul, Pow, Symbol
+from sympy import Basic, Mul, Pow, Symbol, Tuple
 from sympy.core.function import AppliedUndef
 
 
@@ -173,8 +173,15 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
         ]
 
     def collapse_differential_tuples(expr: Any) -> Any:
-        # parse_latex may read a standalone token like "dU" as tuple (d, U).
-        # For thermodynamics notation, treat this as a single symbol dU.
+        # parse_latex may represent tokens like dU or dP as tuple(d, U/P),
+        # and those tuples can appear nested inside larger expressions.
+        if (
+            isinstance(expr, Tuple)
+            and len(expr) == 2
+            and all(getattr(item, "is_Symbol", False) for item in expr)
+            and str(expr[0]) == "d"
+        ):
+            return Symbol(f"d{expr[1]}")
         if (
             isinstance(expr, tuple)
             and len(expr) == 2
@@ -182,6 +189,12 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
             and str(expr[0]) == "d"
         ):
             return Symbol(f"d{expr[1]}")
+        if isinstance(expr, tuple):
+            return tuple(collapse_differential_tuples(item) for item in expr)
+        if isinstance(expr, Basic):
+            rebuilt_args = tuple(collapse_differential_tuples(arg) for arg in expr.args)
+            if rebuilt_args != expr.args:
+                return expr.func(*rebuilt_args)
         return expr
 
     def collapse_implicit_symbol_calls(expr: Any) -> Any:
