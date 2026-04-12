@@ -4,6 +4,7 @@ import {
 } from '@jupyterlab/application';
 import { ToolbarButton, showErrorMessage } from '@jupyterlab/apputils';
 import { INotebookTracker } from '@jupyterlab/notebook';
+import { runIcon } from '@jupyterlab/ui-components';
 import { EquationLibraryPanel } from './panel/EquationLibraryPanel';
 import { EquationLibraryApi } from './request';
 
@@ -77,11 +78,11 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     notebooks.widgetAdded.connect((_, notebookPanel) => {
       const toolbarButton = new ToolbarButton({
-        label: 'SymPy Library',
+        icon: runIcon,
         onClick: () => {
           void app.commands.execute(commandId);
         },
-        tooltip: 'Open SymPy equation library sidebar'
+        tooltip: 'Open equation library sidebar'
       });
 
       notebookPanel.toolbar.insertAfter('cellType', 'sympyLibrary', toolbarButton);

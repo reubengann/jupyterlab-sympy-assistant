@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import katex from 'katex';
 import { showErrorMessage } from '@jupyterlab/apputils';
 import {
@@ -146,21 +146,45 @@ function EquationCard(props: {
 function EquationLibraryView({ api, onInsertSympy }: IEquationViewProps) {
   const [equations, setEquations] = useState<IEquationRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const pendingScrollTopRef = useRef<number | null>(null);
 
-  const refresh = async () => {
-    setLoading(true);
+  const refresh = async ({
+    showLoading = true,
+    preserveScroll = false
+  }: {
+    showLoading?: boolean;
+    preserveScroll?: boolean;
+  } = {}) => {
+    if (preserveScroll && listRef.current) {
+      pendingScrollTopRef.current = listRef.current.scrollTop;
+    }
+    if (showLoading) {
+      setLoading(true);
+    }
     try {
       setEquations(await api.list());
     } catch (error) {
       await showErrorMessage('Failed to load equations', String(error));
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    void refresh();
+    void refresh({ showLoading: true });
   }, []);
+
+  useEffect(() => {
+    if (pendingScrollTopRef.current === null || !listRef.current) {
+      return;
+    }
+    listRef.current.scrollTop = pendingScrollTopRef.current;
+    pendingScrollTopRef.current = null;
+  }, [equations]);
 
   const editEquation = async (equation: IEquationRecord) => {
     const draft = await showEquationModal(equation);
@@ -169,7 +193,7 @@ function EquationLibraryView({ api, onInsertSympy }: IEquationViewProps) {
     }
     try {
       await api.update(equation.id, draft);
-      await refresh();
+      await refresh({ showLoading: false, preserveScroll: true });
     } catch (error) {
       await showErrorMessage('Failed to update equation', String(error));
     }
@@ -178,7 +202,7 @@ function EquationLibraryView({ api, onInsertSympy }: IEquationViewProps) {
   const deleteEquation = async (equation: IEquationRecord) => {
     try {
       await api.remove(equation.id);
-      await refresh();
+      await refresh({ showLoading: false, preserveScroll: true });
     } catch (error) {
       await showErrorMessage('Failed to delete equation', String(error));
     }
@@ -209,7 +233,7 @@ function EquationLibraryView({ api, onInsertSympy }: IEquationViewProps) {
         return;
       }
       await api.create(draft);
-      await refresh();
+      await refresh({ showLoading: false, preserveScroll: true });
     } catch (error) {
       await showErrorMessage('Failed to convert LaTeX', String(error));
     }
@@ -228,29 +252,77 @@ function EquationLibraryView({ api, onInsertSympy }: IEquationViewProps) {
     }
   };
 
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredEquations = useMemo(() => {
+    if (!normalizedQuery) {
+      return equations;
+    }
+    return equations.filter(equation => {
+      const haystack = [
+        equation.name,
+        equation.description ?? '',
+        equation.latex ?? '',
+        equation.sympy
+      ]
+        .join('\n')
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [equations, normalizedQuery]);
+
   return (
     <div className="jp-SympyEquationPanel">
       <div className="jp-SympyEquationPanel-header">
-        <h3>SymPy Equation Library</h3>
+        <h3>Library</h3>
         <div className="jp-SympyEquationPanel-headerButtons">
           <button
-            className="jp-SympyEquationPanel-headerIconButton"
+            className="jp-SympyEquationCard-iconButton"
             onClick={() => void insertFromLatex()}
             title="Add from LaTeX"
             aria-label="Add from LaTeX"
           >
             {LabIcon.resolveReact({ icon: addFromLatexIcon, tag: 'span' })}
           </button>
-          <button onClick={() => void convertLatexToCell()}>Convert</button>
+          <button
+            className="jp-SympyEquationCard-iconButton"
+            onClick={() => void convertLatexToCell()}
+            title="Convert LaTeX and insert into active cell"
+            aria-label="Convert LaTeX and insert"
+          >
+            {LabIcon.resolveReact({ icon: sympyLibraryIcon, tag: 'span' })}
+          </button>
         </div>
+      </div>
+      <div className="jp-SympyEquationPanel-searchRow">
+        <input
+          className="jp-SympyEquationPanel-searchInput"
+          type="search"
+          value={searchQuery}
+          onChange={event => setSearchQuery(event.target.value)}
+          placeholder="Search name, description, LaTeX, SymPy"
+          aria-label="Search equations"
+        />
+        {searchQuery ? (
+          <button
+            className="jp-SympyEquationPanel-searchClear"
+            type="button"
+            onClick={() => setSearchQuery('')}
+            title="Clear search"
+            aria-label="Clear search"
+          >
+            x
+          </button>
+        ) : null}
       </div>
       {loading ? (
         <p>Loading...</p>
       ) : equations.length === 0 ? (
         <p>No saved equations yet.</p>
+      ) : filteredEquations.length === 0 ? (
+        <p>No equations match your search.</p>
       ) : (
-        <div className="jp-SympyEquationPanel-list">
-          {equations.map(equation => (
+        <div className="jp-SympyEquationPanel-list" ref={listRef}>
+          {filteredEquations.map(equation => (
             <EquationCard
               key={equation.id}
               equation={equation}
@@ -270,7 +342,7 @@ export class EquationLibraryPanel extends ReactWidget {
     super();
     this.id = 'jupyterlab-sympy-assistant:library-panel';
     this.title.label = '';
-    this.title.caption = 'SymPy Library';
+    this.title.caption = 'Library';
     this.title.icon = sympyLibraryIcon;
     this.title.closable = false;
     this.addClass('jp-SympyEquationSidebar');
