@@ -254,3 +254,27 @@ def test_convert_latex_handles_apostrophe_and_nested_differentials():
     assert bundle["symbols"] == ["dP", "dh", "dq", "v"]
     assert bundle["symbols_line"] == "dP, dh, dq, v = spp.symbols('dP dh dq v')"
     assert bundle["sympy"] == "spp.Eq(dq, -dP*v + dh)"
+
+
+def test_convert_latex_handles_braced_subscript_differentials():
+    bundle = latex_parser.convert_latex_to_bundle(
+        r"\mathrm{d}{T_{s}} = \frac{\beta v T}{c_{P}} \mathrm{d}{P_{s}}"
+    )
+    assert bundle["symbols"] == ["T", "beta", "c_P", "dP_s", "dT_s", "v"]
+    assert (
+        bundle["symbols_line"]
+        == "T, beta, c_P, dP_s, dT_s, v = spp.symbols('T beta c_P dP_s dT_s v')"
+    )
+    assert bundle["sympy"] == "spp.Eq(dT_s, T*beta*dP_s*v/c_P)"
+
+
+def test_convert_latex_handles_subscripted_symbols_in_constrained_partials():
+    bundle = latex_parser.convert_latex_to_bundle(
+        r"\left(\frac{\partial{c_{v}}}{\partial{v}}\right)_{T} = \left(\frac{\partial{c_{v}}}{\partial{\rho_{r}}}\right)_{T} \left(\frac{\partial{\rho_{r}}}{\partial{v}}\right)_{T}"
+    )
+    assert bundle["symbols"] == ["T", "c_v", "rho_r", "v"]
+    assert bundle["symbols_line"] == "T, c_v, rho_r, v = spp.symbols('T c_v rho_r v')"
+    assert (
+        bundle["sympy"]
+        == "spp.Eq(spp.partial(c_v, v, hold=T), spp.partial(c_v, rho_r, hold=T)*spp.partial(rho_r, v, hold=T))"
+    )

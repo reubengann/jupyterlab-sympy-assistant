@@ -8,4 +8,16 @@
 
 5. When editing the sympy in the modal, I can't seem to insert a newline. Hitting enter does nothing while in the text box.
 
+6. `\mathrm{d}{T_{s}} = \frac{\beta v T}{c_{P}} \mathrm{d}{P_{s}}`
+    This does not parse correctly. I get
+    P_s, T, T_s, beta, c_P, d, mathrm, v = spp.symbols('P_s T T_s beta c_P d mathrm v')
+    spp.Eq(T_s*d*mathrm, P_s*T*beta*d*mathrm*v/c_P)
+
+7. `\left(\frac{\partial{c_{v}}}{\partial{v}}\right)_{T} = \left(\frac{\partial{c_{v}}}{\partial{\rho_{r}}}\right)_{T} \left(\frac{\partial{\rho_{r}}}{\partial{v}}\right)_{T}`
+    This is parsed as 
+    ```
+    c_v, rho_r, v = spp.symbols('c_v rho_r v')
+    spp.Eq(c_v/v, c_v/rho_r)
+    ```
+
 --- undone ---

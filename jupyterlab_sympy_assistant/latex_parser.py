@@ -45,12 +45,29 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
     # Common thermo shorthand: d'Q, d'W -> dQ, dW.
     raw = re.sub(r"\bd'\s*([A-Za-z][A-Za-z0-9_]*)", r"d\1", raw)
     # Normalize differential notation that SymPy misparses:
-    # \mathrm{d}{T} -> \mathrm{d}T
-    raw = re.sub(r"\\mathrm\s*\{\s*d\s*\}\s*\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}", r"\\mathrm{d}\1", raw)
+    # \mathrm{d}{T} -> dT
+    # \mathrm{d}{T_{s}} -> dT_{s}
+    raw = re.sub(
+        r"\\mathrm\s*\{\s*d\s*\}\s*\{\s*([A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+|_\{[A-Za-z0-9]+\})?)\s*\}",
+        r"d\1",
+        raw,
+    )
 
     def sanitize_text_label(label: str) -> str:
         cleaned = re.sub(r"[^A-Za-z0-9]", "", label.strip())
         return cleaned or "text"
+
+    def sanitize_symbol_label(label: str) -> str:
+        normalized = label.strip()
+        normalized = normalized.replace("\\left", "").replace("\\right", "")
+        normalized = re.sub(r"_\{([^{}]+)\}", r"_\1", normalized)
+        normalized = re.sub(r"[^0-9A-Za-z_]", "_", normalized)
+        normalized = re.sub(r"_+", "_", normalized).strip("_")
+        if not normalized:
+            normalized = "sym"
+        if normalized[0].isdigit():
+            normalized = f"sym_{normalized}"
+        return normalized
 
     delta_placeholders: dict[str, str] = {}
     delta_symbol_literals: dict[str, str] = {}
@@ -95,17 +112,17 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
 
     def rewrite_constrained_partial(match: re.Match[str]) -> str:
         nonlocal constrained_partial_index
-        dependent = sanitize_text_label(
+        dependent = sanitize_symbol_label(
             (match.group("dep_braced") or match.group("dep_bare") or "")
         )
-        wrt = sanitize_text_label((match.group("wrt_braced") or match.group("wrt_bare") or ""))
+        wrt = sanitize_symbol_label((match.group("wrt_braced") or match.group("wrt_bare") or ""))
         hold_text = match.group("hold_text") or match.group("hold_text_braced")
         hold_braced = match.group("hold_braced")
         hold_bare = match.group("hold_bare")
         hold_command = match.group("hold_cmd")
         hold_raw = hold_text or hold_braced or hold_bare or hold_command or ""
-        hold = sanitize_text_label(hold_raw)
-        partial_symbol_name = f"partial_{dependent}_{wrt}_{hold}"
+        hold = sanitize_symbol_label(hold_raw)
+        partial_symbol_name = f"partial__{dependent}__{wrt}__{hold}"
         placeholder_id = 930000 + constrained_partial_index
         placeholder = f"Z_{{{placeholder_id}}}"
         constrained_partial_index += 1
@@ -116,7 +133,7 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
     # SymPy's LaTeX parser often drops constrained partial derivative factors.
     # Rewrite them to parser-safe placeholders and restore semantic names later.
     raw = re.sub(
-        r"(?:\\left\()?\s*\\(?:d?frac)\s*\{\s*\\partial\s*(?:\{(?P<dep_braced>[^{}]+)\}|(?P<dep_bare>[A-Za-z0-9]+))\s*\}\s*\{\s*\\partial\s*(?:\{(?P<wrt_braced>[^{}]+)\}|(?P<wrt_bare>[A-Za-z0-9]+))\s*\}\s*(?:\\right\))?\s*_\s*(?:\\text\s*\{(?P<hold_text>[^{}]+)\}|\{\s*\\text\s*\{(?P<hold_text_braced>[^{}]+)\}\s*\}|\{(?P<hold_braced>[^{}]+)\}|(?P<hold_bare>[A-Za-z0-9]+)|\\(?P<hold_cmd>[A-Za-z]+))",
+        r"(?:\\left\()?\s*\\(?:d?frac)\s*\{\s*\\partial\s*(?:\{(?P<dep_braced>\\?[A-Za-z]+(?:_\{[A-Za-z0-9]+\}|_[A-Za-z0-9]+)?)\}|(?P<dep_bare>\\?[A-Za-z]+(?:_\{[A-Za-z0-9]+\}|_[A-Za-z0-9]+)?))\s*\}\s*\{\s*\\partial\s*(?:\{(?P<wrt_braced>\\?[A-Za-z]+(?:_\{[A-Za-z0-9]+\}|_[A-Za-z0-9]+)?)\}|(?P<wrt_bare>\\?[A-Za-z]+(?:_\{[A-Za-z0-9]+\}|_[A-Za-z0-9]+)?))\s*\}\s*(?:\\right\))?\s*_\s*(?:\\text\s*\{(?P<hold_text>[^{}]+)\}|\{\s*\\text\s*\{(?P<hold_text_braced>[^{}]+)\}\s*\}|\{(?P<hold_braced>\\?[A-Za-z]+(?:_\{[A-Za-z0-9]+\}|_[A-Za-z0-9]+)?)\}|(?P<hold_bare>\\?[A-Za-z]+(?:_\{[A-Za-z0-9]+\}|_[A-Za-z0-9]+)?)|\\(?P<hold_cmd>[A-Za-z]+))",
         rewrite_constrained_partial,
         raw,
     )
@@ -332,7 +349,8 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
         normalized = re.sub(r"_\{([^}]+)\}", r"_\1", normalized)
         # Replace remaining non-identifier chars with underscores.
         normalized = re.sub(r"[^0-9A-Za-z_]", "_", normalized)
-        normalized = re.sub(r"_+", "_", normalized).strip("_")
+        if not normalized.startswith("partial__"):
+            normalized = re.sub(r"_+", "_", normalized).strip("_")
         if not normalized:
             normalized = "sym"
         if normalized[0].isdigit():
@@ -341,7 +359,7 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
 
     def to_latex_symbol_name(name: str) -> str:
         constrained_partial_match = re.fullmatch(
-            r"partial_([A-Za-z0-9]+)_([A-Za-z0-9]+)_([A-Za-z0-9]+)", name
+            r"partial__(.+?)__(.+?)__(.+)", name
         )
         if constrained_partial_match:
             dependent, wrt, hold = constrained_partial_match.groups()
