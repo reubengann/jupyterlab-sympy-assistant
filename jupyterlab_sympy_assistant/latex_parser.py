@@ -44,6 +44,13 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
     raw = raw.replace("\\\\", "\\")
     # Common thermo shorthand: d'Q, d'W -> dQ, dW.
     raw = re.sub(r"\bd'\s*([A-Za-z][A-Za-z0-9_]*)", r"d\1", raw)
+    # Also support LaTeX differential prime notation with braces:
+    # \mathrm{d}'{q_r} -> dq_r
+    raw = re.sub(
+        r"\\mathrm\s*\{\s*d\s*\}\s*'\s*(?:\{\s*([A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+|_\{[A-Za-z0-9]+\})?)\s*\}|([A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+|_\{[A-Za-z0-9]+\})?))",
+        lambda match: f"d{match.group(1) or match.group(2)}",
+        raw,
+    )
     # Normalize differential notation that SymPy misparses:
     # \mathrm{d}{T} -> dT
     # \mathrm{d}{T_{s}} -> dT_{s}

@@ -278,3 +278,12 @@ def test_convert_latex_handles_subscripted_symbols_in_constrained_partials():
         bundle["sympy"]
         == "spp.Eq(spp.partial(c_v, v, hold=T), spp.partial(c_v, rho_r, hold=T)*spp.partial(rho_r, v, hold=T))"
     )
+
+
+def test_convert_latex_handles_roman_prime_differential_with_subscript():
+    bundle = latex_parser.convert_latex_to_bundle(
+        r"\mathrm{d}'{q_r} = T \left(\frac{\partial{P}}{\partial{T}}\right)_{v} \mathrm{d}{v}"
+    )
+    assert bundle["symbols"] == ["P", "T", "dq_r", "dv", "v"]
+    assert bundle["symbols_line"] == "P, T, dq_r, dv, v = spp.symbols('P T dq_r dv v')"
+    assert bundle["sympy"] == "spp.Eq(dq_r, T*dv*spp.partial(P, T, hold=v))"
