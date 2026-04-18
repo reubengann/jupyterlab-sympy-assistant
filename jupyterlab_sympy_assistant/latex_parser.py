@@ -327,8 +327,27 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
     parsed_exprs = [collapse_implicit_symbol_calls(expr) for expr in parsed_exprs]
     parsed_exprs = [collapse_wrapper_symbol_products(expr) for expr in parsed_exprs]
 
-    def normalize_eq(text: str) -> str:
-        return re.sub(r"(?<!spp\.)(?<!sp\.)Eq\(", "spp.Eq(", text)
+    def normalize_sympy_calls(text: str) -> str:
+        normalized = re.sub(r"(?<!spp\.)(?<!sp\.)Eq\(", "spp.Eq(", text)
+        for func_name in (
+            "sqrt",
+            "log",
+            "exp",
+            "sin",
+            "cos",
+            "tan",
+            "asin",
+            "acos",
+            "atan",
+            "Integral",
+            "Derivative",
+        ):
+            normalized = re.sub(
+                rf"(?<!spp\.)(?<!sp\.)\b{func_name}\(",
+                f"spp.{func_name}(",
+                normalized,
+            )
+        return normalized
 
     latex_wrapper_commands = (
         "mathscr",
@@ -435,7 +454,7 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
             for index in range(len(parsed_exprs) - 1)
         ]
 
-    sympy_text = "\n".join(normalize_eq(str(expr)) for expr in expressions)
+    sympy_text = "\n".join(normalize_sympy_calls(str(expr)) for expr in expressions)
 
     for partial_symbol_name, (dependent, wrt, hold) in constrained_partial_specs.items():
         partial_call = f"spp.partial({dependent}, {wrt}, hold={hold})"

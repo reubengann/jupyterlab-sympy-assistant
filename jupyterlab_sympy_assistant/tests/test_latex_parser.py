@@ -106,7 +106,7 @@ def test_convert_latex_declares_integral_bound_variable(monkeypatch):
         bundle["symbols_line"]
         == "Q, T, T_1, T_2, c, n = spp.symbols('Q T T_1 T_2 c n')"
     )
-    assert bundle["sympy"] == "spp.Eq(Q, n*Integral(c, (T, T_1, T_2)))"
+    assert bundle["sympy"] == "spp.Eq(Q, n*spp.Integral(c, (T, T_1, T_2)))"
 
 
 def test_convert_latex_prefers_fallback_when_lark_returns_non_sympy(monkeypatch):
@@ -187,7 +187,7 @@ def test_convert_latex_handles_mathscr_with_text_subscript_in_integral():
         bundle["symbols_line"]
         == "R, T, W, mathscrF_fric, n, x, x_0 = spp.symbols('R T W \\\\mathscr{F}_\\\\text{fric} n x x_0')"
     )
-    assert bundle["sympy"] == "spp.Eq(W, Integral(R*T*n/x + mathscrF_fric, (x, x_0, 0.9*x_0)))"
+    assert bundle["sympy"] == "spp.Eq(W, spp.Integral(R*T*n/x + mathscrF_fric, (x, x_0, 0.9*x_0)))"
 
 
 def test_convert_latex_preserves_mathscr_numeric_subscripts_in_kinetic_term():
@@ -231,7 +231,7 @@ def test_convert_latex_normalizes_braced_roman_differentials_in_integrals():
     assert bundle["symbols_line"] == "T, T_1, T_2, V, a, c_v, v = spp.symbols('T T_1 T_2 V a c_v v')"
     assert (
         bundle["sympy"]
-        == "spp.Eq(-Integral(1, (T, T_1, T_2)), Integral(a/(c_v*v**2), (v, V, 2*V)))"
+        == "spp.Eq(-spp.Integral(1, (T, T_1, T_2)), spp.Integral(a/(c_v*v**2), (v, V, 2*V)))"
     )
 
 
@@ -287,3 +287,10 @@ def test_convert_latex_handles_roman_prime_differential_with_subscript():
     assert bundle["symbols"] == ["P", "T", "dq_r", "dv", "v"]
     assert bundle["symbols_line"] == "P, T, dq_r, dv, v = spp.symbols('P T dq_r dv v')"
     assert bundle["sympy"] == "spp.Eq(dq_r, T*dv*spp.partial(P, T, hold=v))"
+
+
+def test_convert_latex_prefixes_sqrt_with_spp_namespace():
+    bundle = latex_parser.convert_latex_to_bundle(r"c = \sqrt{\frac{\gamma}{\rho \kappa}}")
+    assert bundle["symbols"] == ["c", "gamma", "kappa", "rho"]
+    assert bundle["symbols_line"] == "c, gamma, kappa, rho = spp.symbols('c gamma kappa rho')"
+    assert bundle["sympy"] == "spp.Eq(c, spp.sqrt(gamma/(kappa*rho)))"
