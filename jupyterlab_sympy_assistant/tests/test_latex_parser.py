@@ -194,12 +194,13 @@ def test_convert_latex_preserves_mathscr_numeric_subscripts_in_kinetic_term():
     bundle = latex_parser.convert_latex_to_bundle(
         r"\Delta h = - w_\text{sh} - \frac12 (\mathscr{V}_2^2 - \mathscr{V}_1^2)"
     )
-    assert bundle["symbols"] == ["Delta", "h", "mathscrV_1", "mathscrV_2", "w_sh"]
+    assert bundle["symbols"] == ["dh", "mathscrV_1", "mathscrV_2", "w_sh"]
     assert (
         bundle["symbols_line"]
-        == "Delta, h, mathscrV_1, mathscrV_2, w_sh = spp.symbols('Delta h \\\\mathscr{V}_{1} \\\\mathscr{V}_{2} w_\\\\text{sh}')"
+        == "dh = spp.Symbol('\\\\Delta h')\n"
+        "mathscrV_1, mathscrV_2, w_sh = spp.symbols('\\\\mathscr{V}_{1} \\\\mathscr{V}_{2} w_\\\\text{sh}')"
     )
-    assert bundle["sympy"] == "spp.Eq(Delta*h, mathscrV_1**2/2 - mathscrV_2**2/2 - w_sh)"
+    assert bundle["sympy"] == "spp.Eq(dh, mathscrV_1**2/2 - mathscrV_2**2/2 - w_sh)"
 
 
 def test_convert_latex_preserves_constrained_partials_in_products():
@@ -247,6 +248,19 @@ def test_convert_latex_declares_delta_symbols_as_atomic():
         "T_0, c_v, n = spp.symbols('T_0 c_v n')"
     )
     assert bundle["sympy"] == "spp.Eq(dQ, T_0*c_v*n/2 + c_v*dT*n)"
+
+
+def test_convert_latex_declares_lowercase_delta_symbols_as_atomic():
+    bundle = latex_parser.convert_latex_to_bundle(
+        r"\Delta s = c_{P} \ln\left(\frac{T}{T_{0}}\right) - \beta v_{0} \left(P - P_{0}\right)"
+    )
+    assert bundle["symbols"] == ["P", "P_0", "T", "T_0", "beta", "c_P", "ds", "v_0"]
+    assert (
+        bundle["symbols_line"]
+        == "ds = spp.Symbol('\\\\Delta s')\n"
+        "P, P_0, T, T_0, beta, c_P, v_0 = spp.symbols('P P_0 T T_0 beta c_P v_0')"
+    )
+    assert bundle["sympy"] == "spp.Eq(ds, -beta*v_0*(P - P_0) + c_P*spp.log(T/T_0))"
 
 
 def test_convert_latex_handles_apostrophe_and_nested_differentials():

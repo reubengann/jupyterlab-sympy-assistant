@@ -83,7 +83,7 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
     def rewrite_delta_symbol(match: re.Match[str]) -> str:
         nonlocal delta_index
         token = (match.group(1) or match.group(2) or "").strip()
-        if not token or not token[0].isupper():
+        if not token:
             return match.group(0)
         token_name = re.sub(r"[^0-9A-Za-z_]", "_", token)
         token_name = re.sub(r"_+", "_", token_name).strip("_")
