@@ -180,11 +180,27 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
 
     raw = re.sub(r"_\\text\s*\{([^{}]+)\}", rewrite_text_subscript, raw)
 
+    text_symbol_placeholders: dict[str, str] = {}
+    text_symbol_index = 0
+
+    def rewrite_text_symbol(match: re.Match[str]) -> str:
+        nonlocal text_symbol_index
+        symbol_name = sanitize_symbol_label(match.group(1))
+        placeholder_id = 920000 + text_symbol_index
+        placeholder = f"Z_{{{placeholder_id}}}"
+        text_symbol_index += 1
+        text_symbol_placeholders[placeholder] = symbol_name
+        return placeholder
+
+    # Treat standalone text labels like \text{const} as one symbolic atom.
+    raw = re.sub(r"\\text\s*\{([^{}]+)\}", rewrite_text_symbol, raw)
+
     parts = [part.strip() for part in raw.split("=") if part.strip()]
     parsed_exprs: List[Any] = [_parse_part(part) for part in parts]
     all_placeholders: dict[str, str] = {}
     all_placeholders.update(delta_placeholders)
     all_placeholders.update(wrapper_text_subscript_placeholders)
+    all_placeholders.update(text_symbol_placeholders)
     all_placeholders.update(constrained_partial_placeholders)
     if all_placeholders:
         placeholder_map = {

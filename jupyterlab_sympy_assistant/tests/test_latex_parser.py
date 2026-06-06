@@ -168,6 +168,15 @@ def test_convert_latex_preserves_text_subscripts_and_mathscr_symbols():
     assert bundle["sympy"] == "spp.Eq(c_P*m*(T_boil - T_melt), mathscrP*(-t_3 + t_4))"
 
 
+def test_convert_latex_treats_standalone_text_as_symbol():
+    bundle = latex_parser.convert_latex_to_bundle(
+        r"\left(P + \frac{a}{v^{2}}\right) \left(v - b\right)^{\frac{R}{c_{v}} + 1} = \text{const}"
+    )
+    assert bundle["symbols"] == ["P", "R", "a", "b", "c_v", "const", "v"]
+    assert bundle["symbols_line"] == "P, R, a, b, c_v, const, v = spp.symbols('P R a b c_v const v')"
+    assert bundle["sympy"] == "spp.Eq((P + a/v**2)*(-b + v)**(R/c_v + 1), const)"
+
+
 def test_convert_latex_keeps_plain_letter_subscripts_non_text():
     bundle = latex_parser.convert_latex_to_bundle(r"q_{acb} - w_{acb} = q_{ab} - w_{ab}")
     assert bundle["symbols"] == ["q_ab", "q_acb", "w_ab", "w_acb"]
