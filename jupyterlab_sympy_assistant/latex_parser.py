@@ -40,6 +40,7 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
     raw = (latex or "").strip()
     if not raw:
         raise ValueError("Field 'latex' is required.")
+    raw = re.sub(r"^\s*\$\$(.*)\$\$\s*$", r"\1", raw, flags=re.DOTALL).strip()
     # Handle common copy/paste form where slashes are double-escaped.
     raw = raw.replace("\\\\", "\\")
     # Common thermo shorthand: d'Q, d'W -> dQ, dW.
@@ -75,6 +76,39 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
         if normalized[0].isdigit():
             normalized = f"sym_{normalized}"
         return normalized
+
+    ordinary_derivative_placeholders: dict[str, str] = {}
+    ordinary_derivative_index = 0
+
+    def rewrite_ordinary_derivative(match: re.Match[str]) -> str:
+        nonlocal ordinary_derivative_index
+        dependent = sanitize_symbol_label(
+            match.group("dep") or match.group("dep_braced") or match.group("dep_bare") or ""
+        )
+        wrt = sanitize_symbol_label(
+            match.group("wrt") or match.group("wrt_braced") or match.group("wrt_bare") or ""
+        )
+        placeholder_id = 950000 + ordinary_derivative_index
+        placeholder = f"Z_{{{placeholder_id}}}"
+        ordinary_derivative_index += 1
+        ordinary_derivative_placeholders[placeholder] = f"d{dependent}_d{wrt}"
+        return placeholder
+
+    # Treat ordinary differential quotients as atomic symbols for equation entry:
+    # \frac{\mathrm{d}{P}}{\mathrm{d}{T}} -> dP_dT
+    raw = re.sub(
+        r"\\(?:d?frac)\s*\{\s*(?:\\mathrm\s*\{\s*d\s*\}\s*\{\s*(?P<dep>[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+|_\{[A-Za-z0-9]+\})?)\s*\}|d\s*\{\s*(?P<dep_braced>[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+|_\{[A-Za-z0-9]+\})?)\s*\}|d\s*(?P<dep_bare>[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+|_\{[A-Za-z0-9]+\})?))\s*\}\s*\{\s*(?:\\mathrm\s*\{\s*d\s*\}\s*\{\s*(?P<wrt>[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+|_\{[A-Za-z0-9]+\})?)\s*\}|d\s*\{\s*(?P<wrt_braced>[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+|_\{[A-Za-z0-9]+\})?)\s*\}|d\s*(?P<wrt_bare>[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+|_\{[A-Za-z0-9]+\})?))\s*\}",
+        rewrite_ordinary_derivative,
+        raw,
+    )
+
+    # SymPy parses \frac{l}{T \left(...\right)} as (l/T)*(...) rather than
+    # l/(T*(...)). Make the implicit product in the denominator explicit.
+    raw = re.sub(
+        r"(\\(?:d?frac)\s*\{(?:[^{}]|\{[^{}]*\})+\}\s*\{\s*[A-Za-z][A-Za-z0-9]*(?:_\{[^{}]+\}|_[A-Za-z0-9]+)?\s+)(\\left)",
+        r"\1\\cdot \2",
+        raw,
+    )
 
     delta_placeholders: dict[str, str] = {}
     delta_symbol_literals: dict[str, str] = {}
@@ -172,6 +206,27 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
         raw,
     )
 
+    wrapper_symbol_placeholders: dict[str, str] = {}
+    wrapper_symbol_index = 0
+
+    def rewrite_wrapper_symbol(match: re.Match[str]) -> str:
+        nonlocal wrapper_symbol_index
+        wrapper = match.group(1)
+        base = re.sub(r"[^A-Za-z0-9]", "", match.group(2))
+        placeholder_id = 900000 + wrapper_symbol_index
+        placeholder = f"Z_{{{placeholder_id}}}"
+        wrapper_symbol_index += 1
+        wrapper_symbol_placeholders[placeholder] = f"{wrapper}{base}"
+        return placeholder
+
+    # Rewrite standalone wrapped symbols before parsing so \mathscr{H}\,dM
+    # stays mathscrH*dM instead of becoming the ambiguous product H*dM*mathscr.
+    raw = re.sub(
+        r"\\(mathscr|mathcal|mathbf|mathrm|mathit|mathsf|mathtt|boldsymbol)\s*\{([^{}]+)\}(?!\s*_)",
+        rewrite_wrapper_symbol,
+        raw,
+    )
+
     # Keep text subscripts as atomic names by converting them to one-token commands:
     # T_\text{boil} -> T_{\boil}. SymPy then parses this as T_{boil}.
     def rewrite_text_subscript(match: re.Match[str]) -> str:
@@ -198,19 +253,31 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
     parts = [part.strip() for part in raw.split("=") if part.strip()]
     parsed_exprs: List[Any] = [_parse_part(part) for part in parts]
     all_placeholders: dict[str, str] = {}
+    all_placeholders.update(ordinary_derivative_placeholders)
     all_placeholders.update(delta_placeholders)
+    all_placeholders.update(wrapper_symbol_placeholders)
     all_placeholders.update(wrapper_text_subscript_placeholders)
     all_placeholders.update(text_symbol_placeholders)
     all_placeholders.update(constrained_partial_placeholders)
     if all_placeholders:
-        placeholder_map = {
-            Symbol(placeholder): Symbol(target)
-            for placeholder, target in all_placeholders.items()
-        }
-        parsed_exprs = [
-            expr.xreplace(placeholder_map) if hasattr(expr, "xreplace") else expr
-            for expr in parsed_exprs
-        ]
+        placeholder_name_map = {}
+        for placeholder, target in all_placeholders.items():
+            target_symbol = Symbol(target)
+            placeholder_name_map[placeholder] = target_symbol
+            placeholder_name_map[sanitize_symbol_label(placeholder)] = target_symbol
+
+        def replace_placeholders(expr: Any) -> Any:
+            if not isinstance(expr, Basic):
+                return expr
+            return expr.xreplace(
+                {
+                    symbol: placeholder_name_map[str(symbol)]
+                    for symbol in expr.atoms(Symbol)
+                    if str(symbol) in placeholder_name_map
+                }
+            )
+
+        parsed_exprs = [replace_placeholders(expr) for expr in parsed_exprs]
 
     def collapse_differential_tuples(expr: Any) -> Any:
         # parse_latex may represent tokens like dU or dP as tuple(d, U/P),
@@ -342,6 +409,8 @@ def convert_latex_to_bundle(latex: str) -> dict[str, Any]:
     parsed_exprs = [collapse_differential_tuples(expr) for expr in parsed_exprs]
     parsed_exprs = [collapse_implicit_symbol_calls(expr) for expr in parsed_exprs]
     parsed_exprs = [collapse_wrapper_symbol_products(expr) for expr in parsed_exprs]
+    if all_placeholders:
+        parsed_exprs = [replace_placeholders(expr) for expr in parsed_exprs]
 
     def normalize_sympy_calls(text: str) -> str:
         normalized = re.sub(r"(?<!spp\.)(?<!sp\.)Eq\(", "spp.Eq(", text)

@@ -168,6 +168,18 @@ def test_convert_latex_preserves_text_subscripts_and_mathscr_symbols():
     assert bundle["sympy"] == "spp.Eq(c_P*m*(T_boil - T_melt), mathscrP*(-t_3 + t_4))"
 
 
+def test_convert_latex_preserves_standalone_mathscr_before_differential():
+    bundle = latex_parser.convert_latex_to_bundle(
+        r"\mathrm{d}{U} = T \,\mathrm{d}{S} - P \,\mathrm{d}{V} + \mathscr{H} \,\mathrm{d}{M}"
+    )
+    assert bundle["symbols"] == ["P", "T", "dM", "dS", "dU", "dV", "mathscrH"]
+    assert (
+        bundle["symbols_line"]
+        == "P, T, dM, dS, dU, dV, mathscrH = spp.symbols('P T dM dS dU dV \\\\mathscr{H}')"
+    )
+    assert bundle["sympy"] == "spp.Eq(dU, -P*dV + T*dS + dM*mathscrH)"
+
+
 def test_convert_latex_treats_standalone_text_as_symbol():
     bundle = latex_parser.convert_latex_to_bundle(
         r"\left(P + \frac{a}{v^{2}}\right) \left(v - b\right)^{\frac{R}{c_{v}} + 1} = \text{const}"
@@ -310,6 +322,15 @@ def test_convert_latex_handles_roman_prime_differential_with_subscript():
     assert bundle["symbols"] == ["P", "T", "dq_r", "dv", "v"]
     assert bundle["symbols_line"] == "P, T, dq_r, dv, v = spp.symbols('P T dq_r dv v')"
     assert bundle["sympy"] == "spp.Eq(dq_r, T*dv*spp.partial(P, T, hold=v))"
+
+
+def test_convert_latex_treats_ordinary_differential_fraction_as_symbol():
+    bundle = latex_parser.convert_latex_to_bundle(
+        r"$$\frac{\mathrm{d}{P}}{\mathrm{d}{T}} = \frac{l_{12}}{T \left(v'' - v'\right)}$$"
+    )
+    assert bundle["symbols"] == ["T", "dP_dT", "l_12", "v", "v_2"]
+    assert bundle["symbols_line"] == "T, dP_dT, l_12, v, v_2 = spp.symbols('T dP_dT l_12 v v_2')"
+    assert bundle["sympy"] == "spp.Eq(dP_dT, l_12/(T*(-v + v_2)))"
 
 
 def test_convert_latex_prefixes_sqrt_with_spp_namespace():
