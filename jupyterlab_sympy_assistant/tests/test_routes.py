@@ -72,30 +72,3 @@ async def test_validation_error(jp_fetch):
             body=json.dumps({"name": "", "sympy": ""}),
         )
     assert err.value.code == 400
-
-
-async def test_convert_latex_endpoint(jp_fetch, monkeypatch):
-    from jupyterlab_sympy_assistant import handlers
-
-    monkeypatch.setattr(
-        handlers,
-        "convert_latex_to_bundle",
-        lambda latex: {
-            "sympy": "spp.Eq(rho, m/V)\nspp.Eq(m/V, 1/v)",
-            "symbols": ["V", "m", "rho", "v"],
-            "symbols_line": "V, m, rho, v = spp.symbols('V m rho v')",
-            "code": "V, m, rho, v = spp.symbols('V m rho v')\nspp.Eq(rho, m/V)\nspp.Eq(m/V, 1/v)",
-        },
-    )
-
-    response = await jp_fetch(
-        "api",
-        "jupyterlab-sympy-assistant",
-        "convert-latex",
-        method="POST",
-        body=json.dumps({"latex": r"\rho = \frac{m}{V} = \frac{1}{v}"}),
-    )
-    assert response.code == 200
-    payload = json.loads(response.body)
-    assert payload["sympy"] == "spp.Eq(rho, m/V)\nspp.Eq(m/V, 1/v)"
-    assert payload["symbols"] == ["V", "m", "rho", "v"]

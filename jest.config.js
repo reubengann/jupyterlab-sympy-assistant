@@ -4,6 +4,7 @@ const esModules = [
   '@codemirror',
   '@jupyter/ydoc',
   '@jupyterlab/',
+  '@physics-derivation-pad/',
   'lib0',
   'nanoid',
   'vscode-ws-jsonrpc',
@@ -17,6 +18,11 @@ const baseConfig = jestJupyterLab(__dirname);
 module.exports = {
   ...baseConfig,
   automock: false,
+  moduleNameMapper: {
+    ...baseConfig.moduleNameMapper,
+    '^@physics-derivation-pad/core/(latex|sympy)$':
+      '<rootDir>/node_modules/@physics-derivation-pad/core/dist/math/adapters/$1/index.js'
+  },
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',

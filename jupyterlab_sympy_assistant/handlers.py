@@ -8,7 +8,6 @@ import tornado
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 
-from .latex_parser import convert_latex_to_bundle
 from .store import EquationLibraryStore
 
 
@@ -137,40 +136,14 @@ class EquationByIdHandler(BaseEquationHandler):
         self.finish()
 
 
-class LatexConvertHandler(BaseEquationHandler):
-    @tornado.web.authenticated
-    def post(self) -> None:
-        body = self.parse_json_body()
-        if self._finished:
-            return
-        latex = str(body.get("latex") or "")
-        try:
-            payload = convert_latex_to_bundle(latex)
-        except ValueError as err:
-            self.write_error_message(HTTPStatus.BAD_REQUEST, str(err))
-            return
-        except RuntimeError as err:
-            self.write_error_message(HTTPStatus.SERVICE_UNAVAILABLE, str(err))
-            return
-        except Exception as err:
-            self.log.exception("LaTeX conversion failed")
-            self.write_error_message(HTTPStatus.BAD_REQUEST, f"Failed to parse LaTeX: {err}")
-            return
-
-        self.write_json(payload)
-
-
 def setup_route_handlers(web_app) -> None:
     host_pattern = ".*$"
     base_url = web_app.settings["base_url"]
     api_root = url_path_join(base_url, "api", "jupyterlab-sympy-assistant", "equations")
 
-    convert_route = url_path_join(base_url, "api", "jupyterlab-sympy-assistant", "convert-latex")
-
     handlers = [
         (api_root, EquationsHandler),
         (url_path_join(api_root, r"([^/]+)"), EquationByIdHandler),
-        (convert_route, LatexConvertHandler),
     ]
 
     web_app.add_handlers(host_pattern, handlers)

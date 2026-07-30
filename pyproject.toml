@@ -23,8 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "jupyter_server>=2.4.0,<3",
-    "sympy>=1.12"
+    "jupyter_server>=2.4.0,<3"
 ]
 dynamic = ["version", "description", "authors", "urls", "keywords"]
 

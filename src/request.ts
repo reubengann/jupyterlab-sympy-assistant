@@ -1,7 +1,7 @@
 import { URLExt } from '@jupyterlab/coreutils';
 
 import { ServerConnection } from '@jupyterlab/services';
-import { IEquationInput, IEquationRecord, ILatexConversion } from './types';
+import { IEquationInput, IEquationRecord } from './types';
 
 /**
  * Call the server extension
@@ -47,7 +47,8 @@ export async function requestAPI<T>(
 
   if (!response.ok) {
     const isHtml =
-      typeof data === 'string' && data.replace(/^\s+/, '').startsWith('<!DOCTYPE');
+      typeof data === 'string' &&
+      data.replace(/^\s+/, '').startsWith('<!DOCTYPE');
     const message = isHtml
       ? `Server returned HTML for ${requestUrl} (HTTP ${response.status}). Check Jupyter server logs for this request.`
       : data.message || data.error || JSON.stringify(data);
@@ -81,7 +82,10 @@ export class EquationLibraryApi {
     return payload.equation;
   }
 
-  async update(id: string, input: Partial<IEquationInput>): Promise<IEquationRecord> {
+  async update(
+    id: string,
+    input: Partial<IEquationInput>
+  ): Promise<IEquationRecord> {
     const payload = await requestAPI<{ equation: IEquationRecord }>(
       `equations/${encodeURIComponent(id)}`,
       this.serverSettings,
@@ -95,17 +99,12 @@ export class EquationLibraryApi {
   }
 
   async remove(id: string): Promise<void> {
-    await requestAPI<void>(`equations/${encodeURIComponent(id)}`, this.serverSettings, {
-      method: 'DELETE'
-    });
-  }
-
-  async convertLatex(latex: string): Promise<ILatexConversion> {
-    const payload = await requestAPI<ILatexConversion>('convert-latex', this.serverSettings, {
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ latex }),
-      method: 'POST'
-    });
-    return payload;
+    await requestAPI<void>(
+      `equations/${encodeURIComponent(id)}`,
+      this.serverSettings,
+      {
+        method: 'DELETE'
+      }
+    );
   }
 }

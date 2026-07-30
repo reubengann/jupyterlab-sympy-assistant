@@ -1,8 +1,6 @@
 # jupyterlab_sympy_assistant
 
-[![Github Actions Status](https://github.com/reubengann/jupyterlab-sympy-assistant/workflows/Build/badge.svg)](https://github.com/reubengann/jupyterlab-sympy-assistant/actions/workflows/build.yml)
-
-SymPy helper sidebar for JupyterLab notebooks.
+SymPy helper sidebar and equation library for JupyterLab notebooks.
 
 This extension is composed of a Python package named `jupyterlab_sympy_assistant`
 for the server extension and a NPM package named `jupyterlab-sympy-assistant`
@@ -13,54 +11,36 @@ for the frontend extension.
 - A **Notebook toolbar icon** (function glyph) to open a left sidebar panel.
 - A **sidebar equation library** with rendered math preview (KaTeX) and stored SymPy text.
 - An **Add/Edit modal** for equation metadata (`name`, `sympy`, `latex`, `description`, `tags`).
-- An **Insert from LaTeX** flow that parses LaTeX on the backend and inserts converted SymPy.
+- An **Insert from LaTeX** flow using the Physics Derivation Pad AST parser and SymPy output.
 - **Insert action** to place SymPy notation into the active notebook cell.
 - A lightweight **server extension** that persists equations to a JSON file.
 
 ## Requirements
 
 - JupyterLab >= 4.0.0
+- A sibling checkout of
+  [physics-derivation-pad](https://github.com/reubengann/physics-derivation-pad)
+  when building from source. The frontend currently resolves
+  `@physics-derivation-pad/core` from `../physics-derivation-pad`.
 
-## Install
+The Physics Derivation Pad dependency is compiled into the built JupyterLab
+extension. Users installing a prebuilt wheel do not need its repository, but
+source and editable installs do.
 
-To install the extension, execute:
+## Installation
 
 ```bash
 pip install jupyterlab_sympy_assistant
 ```
 
-## Uninstall
+### Equation Library Storage
 
-To remove the extension, execute:
+Equation records are saved in a user-local JSON file:
 
-```bash
-pip uninstall jupyterlab_sympy_assistant
-```
+- `<jupyter_data_dir>/jupyterlab-sympy-assistant/equation-library.json`
 
-## Troubleshoot
-
-If you are seeing the frontend extension, but it is not working, check
-that the server extension is enabled:
-
-```bash
-jupyter server extension list
-```
-
-If the server extension is installed and enabled, but you are not seeing
-the frontend extension, check the frontend extension is installed:
-
-```bash
-jupyter labextension list
-```
-
-For backend conversion/API issues, run JupyterLab with debug logging and
-inspect request logs from this extension:
-
-```bash
-jupyter lab --debug
-```
-
-## Contributing
+The file includes a `schema_version` and an `equations` array to support future migration
+to another storage backend (such as SQLite) without changing the frontend API.
 
 ### Development install
 
@@ -68,6 +48,29 @@ Note: You will need NodeJS to build the extension package.
 
 The `jlpm` command is JupyterLab's pinned version of
 [yarn](https://yarnpkg.com/) that is installed with JupyterLab.
+
+Before installing this extension, place both repositories under the same parent
+directory and build the Physics Derivation Pad core package:
+
+```bash
+cd ../physics-derivation-pad
+npm install
+npm run build:core
+cd ../jupyterlab-sympy-assistant
+```
+
+> **Builder compatibility note:** This repository was generated from the
+> JupyterLab extension template v4.5.2 and currently uses the corresponding
+> `@jupyterlab/builder` and `jupyter labextension` workflow. JupyterLab 4.6 is
+> transitioning extensions to the standalone `jupyter-builder` Python package
+> and `@jupyter/builder` npm package; see
+> [jupyter-builder issue #81](https://github.com/jupyterlab/jupyter-builder/issues/81).
+> Do not replace only the npm builder dependency in this repository. On Windows,
+> `jupyter-builder watch` can currently generate an invalid `_build.load` value
+> of `"static"`, causing JupyterLab to request the static directory and receive a
+> 404. Continue to use `jlpm build` and `jlpm watch` until the repository is
+> updated from the Copier template and the Python requirements, npm dependency,
+> and build scripts can be migrated together.
 
 ```bash
 # Clone the repo to your local environment
@@ -144,14 +147,6 @@ To execute them, run:
 pytest -vv -r ap --cov jupyterlab_sympy_assistant
 ```
 
-### Equation Library Storage
-
-Equation records are saved in a user-local JSON file:
-
-- `<jupyter_data_dir>/jupyterlab-sympy-assistant/equation-library.json`
-
-The file includes a `schema_version` and an `equations` array to support future migration
-to another storage backend (such as SQLite) without changing the frontend API.
 
 #### Frontend tests
 

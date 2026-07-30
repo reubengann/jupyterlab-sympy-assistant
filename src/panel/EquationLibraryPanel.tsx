@@ -8,6 +8,7 @@ import {
   ReactWidget,
   runIcon
 } from '@jupyterlab/ui-components';
+import { convertLatexToBundle } from '../latexConversion';
 import { EquationLibraryApi } from '../request';
 import { IEquationRecord } from '../types';
 import { showEquationModal, showLatexInputModal } from './EquationModal';
@@ -133,10 +134,14 @@ function EquationCard(props: {
             dangerouslySetInnerHTML={{ __html: latexMarkup }}
           />
         ) : (
-          <pre className="jp-SympyEquationCard-fallback">{props.equation.sympy}</pre>
+          <pre className="jp-SympyEquationCard-fallback">
+            {props.equation.sympy}
+          </pre>
         )}
         {props.equation.description && (
-          <p className="jp-SympyEquationCard-description">{props.equation.description}</p>
+          <p className="jp-SympyEquationCard-description">
+            {props.equation.description}
+          </p>
         )}
       </div>
     </div>
@@ -218,7 +223,7 @@ function EquationLibraryView({ api, onInsertSympy }: IEquationViewProps) {
       return;
     }
     try {
-      const converted = await api.convertLatex(latex);
+      const converted = convertLatexToBundle(latex);
       const draft = await showEquationModal({
         id: '',
         name: '',
@@ -245,7 +250,7 @@ function EquationLibraryView({ api, onInsertSympy }: IEquationViewProps) {
       return;
     }
     try {
-      const converted = await api.convertLatex(latex);
+      const converted = convertLatexToBundle(latex);
       onInsertSympy(converted.code, latex);
     } catch (error) {
       await showErrorMessage('Failed to convert LaTeX', String(error));

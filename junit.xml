@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="8" failures="0" errors="0" time="2.513">
+  <testsuite name="convertLatexToBundle" errors="0" failures="0" skipped="0" timestamp="2026-07-29T21:02:48" time="1.55" tests="8">
+    <testcase classname="convertLatexToBundle converts LaTeX through the PDP AST and emits the existing bundle shape" name="convertLatexToBundle converts LaTeX through the PDP AST and emits the existing bundle shape" time="0.008">
+    </testcase>
+    <testcase classname="convertLatexToBundle preserves chained equalities as adjacent equation lines" name="convertLatexToBundle preserves chained equalities as adjacent equation lines" time="0.003">
+    </testcase>
+    <testcase classname="convertLatexToBundle creates safe aliases while preserving the original SymPy symbol names" name="convertLatexToBundle creates safe aliases while preserving the original SymPy symbol names" time="0.003">
+    </testcase>
+    <testcase classname="convertLatexToBundle rejects empty input before invoking the parser" name="convertLatexToBundle rejects empty input before invoking the parser" time="0.008">
+    </testcase>
+    <testcase classname="convertLatexToBundle converts assistant semantics for ordinary differentials" name="convertLatexToBundle converts assistant semantics for ordinary differentials" time="0.001">
+    </testcase>
+    <testcase classname="convertLatexToBundle converts assistant semantics for standalone text" name="convertLatexToBundle converts assistant semantics for standalone text" time="0.001">
+    </testcase>
+    <testcase classname="convertLatexToBundle emits matterlib constrained partial calls from the PDP AST" name="convertLatexToBundle emits matterlib constrained partial calls from the PDP AST" time="0.001">
+    </testcase>
+    <testcase classname="convertLatexToBundle reports expression kinds that have no SymPy policy" name="convertLatexToBundle reports expression kinds that have no SymPy policy" time="0.001">
+    </testcase>
+  </testsuite>
+</testsuites>
