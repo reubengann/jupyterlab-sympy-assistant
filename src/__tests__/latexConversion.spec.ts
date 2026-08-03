@@ -8,7 +8,7 @@ beforeAll(() => {
 });
 
 describe('convertLatexToBundle', () => {
-  it('converts LaTeX through the PDP AST and emits the existing bundle shape', () => {
+  it('converts LaTeX through the Equation Forge AST and emits the existing bundle shape', () => {
     const bundle = convertLatexToBundle(String.raw`a + b = c`);
 
     expect(bundle).toEqual({
@@ -71,7 +71,7 @@ describe('convertLatexToBundle', () => {
     expect(convertLatexToBundle(latex)).toMatchObject({ symbols, sympy });
   });
 
-  it('emits matterlib constrained partial calls from the PDP AST', () => {
+  it('emits matterlib constrained partial calls from the Equation Forge AST', () => {
     const bundle = convertLatexToBundle(
       String.raw`\left(\frac{\partial h}{\partial T}\right)_P`
     );

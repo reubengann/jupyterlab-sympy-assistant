@@ -57,13 +57,13 @@
         "watch:labextension": "jupyter labextension watch ."
     },
     "dependencies": {
+        "@equation-forge/core": "file:../equation-forge",
         "@jupyterlab/application": "^4.0.0",
         "@jupyterlab/apputils": "^4.0.0",
         "@jupyterlab/coreutils": "^6.0.0",
         "@jupyterlab/notebook": "^4.0.0",
         "@jupyterlab/services": "^7.0.0",
         "@jupyterlab/ui-components": "^4.0.0",
-        "@physics-derivation-pad/core": "file:../physics-derivation-pad",
         "katex": "^0.16.22",
         "react": "^18.3.1",
         "react-dom": "^18.3.1"

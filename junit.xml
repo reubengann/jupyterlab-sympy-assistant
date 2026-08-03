@@ -1,21 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="jest tests" tests="8" failures="0" errors="0" time="2.513">
-  <testsuite name="convertLatexToBundle" errors="0" failures="0" skipped="0" timestamp="2026-07-29T21:02:48" time="1.55" tests="8">
-    <testcase classname="convertLatexToBundle converts LaTeX through the PDP AST and emits the existing bundle shape" name="convertLatexToBundle converts LaTeX through the PDP AST and emits the existing bundle shape" time="0.008">
+<testsuites name="jest tests" tests="9" failures="0" errors="0" time="3.378">
+  <testsuite name="convertLatexToBundle" errors="0" failures="0" skipped="0" timestamp="2026-08-03T15:49:30" time="2.103" tests="8">
+    <testcase classname="convertLatexToBundle converts LaTeX through the Equation Forge AST and emits the existing bundle shape" name="convertLatexToBundle converts LaTeX through the Equation Forge AST and emits the existing bundle shape" time="0.013">
     </testcase>
-    <testcase classname="convertLatexToBundle preserves chained equalities as adjacent equation lines" name="convertLatexToBundle preserves chained equalities as adjacent equation lines" time="0.003">
+    <testcase classname="convertLatexToBundle preserves chained equalities as adjacent equation lines" name="convertLatexToBundle preserves chained equalities as adjacent equation lines" time="0.006">
     </testcase>
-    <testcase classname="convertLatexToBundle creates safe aliases while preserving the original SymPy symbol names" name="convertLatexToBundle creates safe aliases while preserving the original SymPy symbol names" time="0.003">
+    <testcase classname="convertLatexToBundle creates safe aliases while preserving the original SymPy symbol names" name="convertLatexToBundle creates safe aliases while preserving the original SymPy symbol names" time="0.007">
     </testcase>
-    <testcase classname="convertLatexToBundle rejects empty input before invoking the parser" name="convertLatexToBundle rejects empty input before invoking the parser" time="0.008">
+    <testcase classname="convertLatexToBundle rejects empty input before invoking the parser" name="convertLatexToBundle rejects empty input before invoking the parser" time="0.011">
     </testcase>
     <testcase classname="convertLatexToBundle converts assistant semantics for ordinary differentials" name="convertLatexToBundle converts assistant semantics for ordinary differentials" time="0.001">
     </testcase>
     <testcase classname="convertLatexToBundle converts assistant semantics for standalone text" name="convertLatexToBundle converts assistant semantics for standalone text" time="0.001">
     </testcase>
-    <testcase classname="convertLatexToBundle emits matterlib constrained partial calls from the PDP AST" name="convertLatexToBundle emits matterlib constrained partial calls from the PDP AST" time="0.001">
+    <testcase classname="convertLatexToBundle emits matterlib constrained partial calls from the Equation Forge AST" name="convertLatexToBundle emits matterlib constrained partial calls from the Equation Forge AST" time="0.002">
     </testcase>
-    <testcase classname="convertLatexToBundle reports expression kinds that have no SymPy policy" name="convertLatexToBundle reports expression kinds that have no SymPy policy" time="0.001">
+    <testcase classname="convertLatexToBundle reports expression kinds that have no SymPy policy" name="convertLatexToBundle reports expression kinds that have no SymPy policy" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="jupyterlab-sympy-assistant" errors="0" failures="0" skipped="0" timestamp="2026-08-03T15:49:32" time="0.055" tests="1">
+    <testcase classname="jupyterlab-sympy-assistant should be tested" name="jupyterlab-sympy-assistant should be tested" time="0.001">
     </testcase>
   </testsuite>
 </testsuites>

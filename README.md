@@ -11,7 +11,7 @@ for the frontend extension.
 - A **Notebook toolbar icon** (function glyph) to open a left sidebar panel.
 - A **sidebar equation library** with rendered math preview (KaTeX) and stored SymPy text.
 - An **Add/Edit modal** for equation metadata (`name`, `sympy`, `latex`, `description`, `tags`).
-- An **Insert from LaTeX** flow using the Physics Derivation Pad AST parser and SymPy output.
+- An **Insert from LaTeX** flow using the Equation Forge AST parser and SymPy output.
 - **Insert action** to place SymPy notation into the active notebook cell.
 - A lightweight **server extension** that persists equations to a JSON file.
 
@@ -19,11 +19,11 @@ for the frontend extension.
 
 - JupyterLab >= 4.0.0
 - A sibling checkout of
-  [physics-derivation-pad](https://github.com/reubengann/physics-derivation-pad)
+  [Equation Forge](https://github.com/reubengann/equation-forge)
   when building from source. The frontend currently resolves
-  `@physics-derivation-pad/core` from `../physics-derivation-pad`.
+  `@equation-forge/core` from `../equation-forge`.
 
-The Physics Derivation Pad dependency is compiled into the built JupyterLab
+The Equation Forge dependency is compiled into the built JupyterLab
 extension. Users installing a prebuilt wheel do not need its repository, but
 source and editable installs do.
 
@@ -50,10 +50,10 @@ The `jlpm` command is JupyterLab's pinned version of
 [yarn](https://yarnpkg.com/) that is installed with JupyterLab.
 
 Before installing this extension, place both repositories under the same parent
-directory and build the Physics Derivation Pad core package:
+directory and build the Equation Forge core package:
 
 ```bash
-cd ../physics-derivation-pad
+cd ../equation-forge
 npm install
 npm run build:core
 cd ../jupyterlab-sympy-assistant

@@ -4,7 +4,7 @@ const esModules = [
   '@codemirror',
   '@jupyter/ydoc',
   '@jupyterlab/',
-  '@physics-derivation-pad/',
+  '@equation-forge/',
   'lib0',
   'nanoid',
   'vscode-ws-jsonrpc',
@@ -20,8 +20,8 @@ module.exports = {
   automock: false,
   moduleNameMapper: {
     ...baseConfig.moduleNameMapper,
-    '^@physics-derivation-pad/core/(latex|sympy)$':
-      '<rootDir>/node_modules/@physics-derivation-pad/core/dist/math/adapters/$1/index.js'
+    '^@equation-forge/core/(latex|sympy)$':
+      '<rootDir>/node_modules/@equation-forge/core/dist/math/adapters/$1/index.js'
   },
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',

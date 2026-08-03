@@ -1643,6 +1643,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@equation-forge/core@file:../equation-forge::locator=jupyterlab-sympy-assistant%40workspace%3A.":
+  version: 0.0.0
+  resolution: "@equation-forge/core@file:../equation-forge#../equation-forge::hash=271563&locator=jupyterlab-sympy-assistant%40workspace%3A."
+  dependencies:
+    "@unified-latex/unified-latex-util-parse": ^1.8.4
+    "@unified-latex/unified-latex-util-print-raw": ^1.8.4
+    algebrite: ^1.4.0
+  checksum: abd15e7255c76e8426f72b2ede1ad6362eaee8dc34d0804d4494143d80775fb8e0751edc51aae91682258e15b1465a829ebb58680cb2f959b6c8d658fa188241
+  languageName: node
+  linkType: hard
+
 "@eslint-community/eslint-utils@npm:^4.2.0, @eslint-community/eslint-utils@npm:^4.4.0":
   version: 4.9.1
   resolution: "@eslint-community/eslint-utils@npm:4.9.1"
@@ -3190,17 +3201,6 @@ __metadata:
   dependencies:
     semver: ^7.3.5
   checksum: 897dac32eb37e011800112d406b9ea2ebd96f1dab01bb8fbeb59191b86f6825dffed6a89f3b6c824753d10f8735b76d630927bd7610e9e123b129ef2e5f02cb5
-  languageName: node
-  linkType: hard
-
-"@physics-derivation-pad/core@file:../physics-derivation-pad::locator=jupyterlab-sympy-assistant%40workspace%3A.":
-  version: 0.0.0
-  resolution: "@physics-derivation-pad/core@file:../physics-derivation-pad#../physics-derivation-pad::hash=27d44a&locator=jupyterlab-sympy-assistant%40workspace%3A."
-  dependencies:
-    "@unified-latex/unified-latex-util-parse": ^1.8.4
-    "@unified-latex/unified-latex-util-print-raw": ^1.8.4
-    algebrite: ^1.4.0
-  checksum: 7fd3c47a9003593052901d49552ee72024483c39f9ffcf1d6b4ee32c7b8c223621bf59ac1da291321572701aad8c3dfd1af37215fd7f18d0ce6f9159c837d3f3
   languageName: node
   linkType: hard
 
@@ -8090,6 +8090,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "jupyterlab-sympy-assistant@workspace:."
   dependencies:
+    "@equation-forge/core": "file:../equation-forge"
     "@jupyterlab/application": ^4.0.0
     "@jupyterlab/apputils": ^4.0.0
     "@jupyterlab/builder": ^4.5.10
@@ -8098,7 +8099,6 @@ __metadata:
     "@jupyterlab/services": ^7.0.0
     "@jupyterlab/testutils": ^4.0.0
     "@jupyterlab/ui-components": ^4.0.0
-    "@physics-derivation-pad/core": "file:../physics-derivation-pad"
     "@types/jest": ^29.2.0
     "@types/json-schema": ^7.0.11
     "@types/react": ^18.0.26

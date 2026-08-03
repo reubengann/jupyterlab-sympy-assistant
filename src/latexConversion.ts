@@ -1,6 +1,6 @@
-import type { Expr } from '@physics-derivation-pad/core/ast';
-import { parseLatexToExpr } from '@physics-derivation-pad/core/latex';
-import { tryExprToSympy } from '@physics-derivation-pad/core/sympy';
+import type { Expr } from '@equation-forge/core/ast';
+import { parseLatexToExpr } from '@equation-forge/core/latex';
+import { tryExprToSympy } from '@equation-forge/core/sympy';
 
 import type { ILatexConversion } from './types';
 
@@ -105,7 +105,9 @@ function renderExpr(expr: Expr): string {
   const details = result.issues
     .map(issue => `${issue.exprKind}: ${issue.reason}`)
     .join(', ');
-  throw new Error(`PDP cannot convert this LaTeX to SymPy (${details}).`);
+  throw new Error(
+    `Equation Forge cannot convert this LaTeX to SymPy (${details}).`
+  );
 }
 
 function extractRenderedSymbolNames(code: string): string[] {
