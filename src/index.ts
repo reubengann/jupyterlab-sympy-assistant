@@ -8,6 +8,10 @@ import { runIcon } from '@jupyterlab/ui-components';
 import { EquationLibraryPanel } from './panel/EquationLibraryPanel';
 import { EquationLibraryApi } from './request';
 
+export const EQUATION_FORGE_WIDGET_ID = 'jupyterlab-equation-forge:main';
+export const ADD_EQUATION_FORGE_ENTRY_COMMAND =
+  'jupyterlab-equation-forge:add-equation-entry';
+
 /**
  * Initialization data for the jupyterlab-sympy-assistant extension.
  */
@@ -31,9 +35,32 @@ const plugin: JupyterFrontEndPlugin<void> = {
     };
 
     const insertIntoActiveCell = (sympyText: string, latexText: string) => {
+      if (app.shell.currentWidget?.id === EQUATION_FORGE_WIDGET_ID) {
+        const latex = latexText.trim();
+        if (!latex) {
+          void showErrorMessage(
+            'No LaTeX is available',
+            'This library equation has no LaTeX to add to Equation Forge.'
+          );
+          return;
+        }
+        if (!app.commands.hasCommand(ADD_EQUATION_FORGE_ENTRY_COMMAND)) {
+          void showErrorMessage(
+            'Equation Forge integration is unavailable',
+            'Rebuild or update the Equation Forge extension to enable library insertion.'
+          );
+          return;
+        }
+        void app.commands.execute(ADD_EQUATION_FORGE_ENTRY_COMMAND, { latex });
+        return;
+      }
+
       const notebookPanel = notebooks.currentWidget;
       if (!notebookPanel) {
-        void showErrorMessage('No notebook is active', 'Open a notebook to insert SymPy code.');
+        void showErrorMessage(
+          'No notebook is active',
+          'Open a notebook to insert SymPy code.'
+        );
         return;
       }
 
@@ -85,7 +112,11 @@ const plugin: JupyterFrontEndPlugin<void> = {
         tooltip: 'Open equation library sidebar'
       });
 
-      notebookPanel.toolbar.insertAfter('cellType', 'sympyLibrary', toolbarButton);
+      notebookPanel.toolbar.insertAfter(
+        'cellType',
+        'sympyLibrary',
+        toolbarButton
+      );
       notebookPanel.disposed.connect(() => toolbarButton.dispose());
     });
   }
