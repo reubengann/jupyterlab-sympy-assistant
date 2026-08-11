@@ -2,9 +2,8 @@ import {
   JupyterFrontEnd,
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
-import { ToolbarButton, showErrorMessage } from '@jupyterlab/apputils';
+import { showErrorMessage } from '@jupyterlab/apputils';
 import { INotebookTracker } from '@jupyterlab/notebook';
-import { runIcon } from '@jupyterlab/ui-components';
 import { EquationLibraryPanel } from './panel/EquationLibraryPanel';
 import { EquationLibraryApi } from './request';
 
@@ -92,32 +91,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
       api,
       onInsertSympy: insertIntoActiveCell
     });
+    app.shell.add(panel, 'left', { rank: 700 });
 
     app.commands.addCommand(commandId, {
       label: 'Open SymPy Equation Library',
       execute: () => {
-        if (!panel.isAttached) {
-          app.shell.add(panel, 'left', { rank: 700 });
-        }
         app.shell.activateById(panel.id);
       }
-    });
-
-    notebooks.widgetAdded.connect((_, notebookPanel) => {
-      const toolbarButton = new ToolbarButton({
-        icon: runIcon,
-        onClick: () => {
-          void app.commands.execute(commandId);
-        },
-        tooltip: 'Open equation library sidebar'
-      });
-
-      notebookPanel.toolbar.insertAfter(
-        'cellType',
-        'sympyLibrary',
-        toolbarButton
-      );
-      notebookPanel.disposed.connect(() => toolbarButton.dispose());
     });
   }
 };

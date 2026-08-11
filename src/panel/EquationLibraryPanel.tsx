@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import katex from 'katex';
 import { showErrorMessage } from '@jupyterlab/apputils';
 import {
+  closeIcon,
   deleteIcon,
   editIcon,
   LabIcon,
@@ -12,12 +13,12 @@ import { convertLatexToBundle } from '../latexConversion';
 import { EquationLibraryApi } from '../request';
 import { IEquationRecord } from '../types';
 import { showEquationModal, showLatexInputModal } from './EquationModal';
-import functionSvg from '../../style/icons/function.svg';
+import equationLibrarySvg from '../../equation-library.svg';
 import addBoxSvg from '../../style/icons/addbox.svg';
 
 const sympyLibraryIcon = new LabIcon({
-  name: 'jupyterlab-sympy-assistant:function',
-  svgstr: functionSvg
+  name: 'jupyterlab-sympy-assistant:equation-library',
+  svgstr: equationLibrarySvg
 });
 
 const addFromLatexIcon = new LabIcon({
@@ -315,7 +316,7 @@ function EquationLibraryView({ api, onInsertSympy }: IEquationViewProps) {
             title="Clear search"
             aria-label="Clear search"
           >
-            x
+            {LabIcon.resolveReact({ icon: closeIcon, tag: 'span' })}
           </button>
         ) : null}
       </div>

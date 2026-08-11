@@ -8,7 +8,7 @@ for the frontend extension.
 
 ## What It Adds
 
-- A **Notebook toolbar icon** (function glyph) to open a left sidebar panel.
+- An automatically registered **equation library panel** in the left sidebar.
 - A **sidebar equation library** with rendered math preview (KaTeX) and stored SymPy text.
 - An **Add/Edit modal** for equation metadata (`name`, `sympy`, `latex`, `description`, `tags`).
 - An **Insert from LaTeX** flow using the Equation Forge AST parser and SymPy output.

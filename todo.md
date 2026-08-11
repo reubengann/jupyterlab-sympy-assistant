@@ -1,2 +1,1 @@
 - Search button X should be a nice character
-- Automatically activate equation library. No reason I should have to click a button to do so.
