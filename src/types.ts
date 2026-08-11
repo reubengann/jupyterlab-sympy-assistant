@@ -17,6 +17,17 @@ export interface IEquationInput {
   tags?: string[];
 }
 
+export interface IEquationLibrary {
+  schema_version: number;
+  equations: IEquationRecord[];
+}
+
+export interface IEquationImportResult {
+  imported: number;
+  added: number;
+  updated: number;
+}
+
 export interface ILatexConversion {
   sympy: string;
   symbols: string[];

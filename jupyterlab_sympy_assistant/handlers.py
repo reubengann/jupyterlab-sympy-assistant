@@ -136,14 +136,49 @@ class EquationByIdHandler(BaseEquationHandler):
         self.finish()
 
 
+class EquationLibraryHandler(BaseEquationHandler):
+    @tornado.web.authenticated
+    def get(self) -> None:
+        payload = self.store.export_library()
+        self.log.info(
+            "Equation library exported: count=%s store=%s",
+            len(payload["equations"]),
+            self.store.path,
+        )
+        self.write_json(payload)
+
+    @tornado.web.authenticated
+    def put(self) -> None:
+        body = self.parse_json_body()
+        if self._finished:
+            return
+        try:
+            result = self.store.import_library(body)
+        except ValueError as err:
+            self.write_error_message(HTTPStatus.BAD_REQUEST, str(err))
+            return
+        self.log.info(
+            "Equation library imported: imported=%s added=%s updated=%s store=%s",
+            result["imported"],
+            result["added"],
+            result["updated"],
+            self.store.path,
+        )
+        self.write_json(result)
+
+
 def setup_route_handlers(web_app) -> None:
     host_pattern = ".*$"
     base_url = web_app.settings["base_url"]
     api_root = url_path_join(base_url, "api", "jupyterlab-sympy-assistant", "equations")
+    library_api = url_path_join(
+        base_url, "api", "jupyterlab-sympy-assistant", "library"
+    )
 
     handlers = [
         (api_root, EquationsHandler),
         (url_path_join(api_root, r"([^/]+)"), EquationByIdHandler),
+        (library_api, EquationLibraryHandler),
     ]
 
     web_app.add_handlers(host_pattern, handlers)

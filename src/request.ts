@@ -1,7 +1,12 @@
 import { URLExt } from '@jupyterlab/coreutils';
 
 import { ServerConnection } from '@jupyterlab/services';
-import { IEquationInput, IEquationRecord } from './types';
+import {
+  IEquationImportResult,
+  IEquationInput,
+  IEquationLibrary,
+  IEquationRecord
+} from './types';
 
 /**
  * Call the server extension
@@ -60,6 +65,20 @@ export async function requestAPI<T>(
 
 export class EquationLibraryApi {
   constructor(private serverSettings: ServerConnection.ISettings) {}
+
+  async exportLibrary(): Promise<IEquationLibrary> {
+    return requestAPI<IEquationLibrary>('library', this.serverSettings);
+  }
+
+  async importLibrary(
+    library: IEquationLibrary
+  ): Promise<IEquationImportResult> {
+    return requestAPI<IEquationImportResult>('library', this.serverSettings, {
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(library),
+      method: 'PUT'
+    });
+  }
 
   async list(): Promise<IEquationRecord[]> {
     const payload = await requestAPI<{ equations: IEquationRecord[] }>(

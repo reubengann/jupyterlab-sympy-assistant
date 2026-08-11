@@ -13,6 +13,7 @@ for the frontend extension.
 - An **Add/Edit modal** for equation metadata (`name`, `sympy`, `latex`, `description`, `tags`).
 - An **Insert from LaTeX** flow using the Equation Forge AST parser and SymPy output.
 - **Insert action** to place SymPy notation into the active notebook cell.
+- Command-palette actions to **export and import** the library as JSON.
 - A lightweight **server extension** that persists equations to a JSON file.
 
 ## Requirements
@@ -41,6 +42,7 @@ Equation records are saved in a user-local JSON file:
 
 The file includes a `schema_version` and an `equations` array to support future migration
 to another storage backend (such as SQLite) without changing the frontend API.
+Imports merge by equation ID: matching records are updated and new records are added.
 
 ### Development install
 
@@ -58,19 +60,6 @@ npm install
 npm run build:core
 cd ../jupyterlab-sympy-assistant
 ```
-
-> **Builder compatibility note:** This repository was generated from the
-> JupyterLab extension template v4.5.2 and currently uses the corresponding
-> `@jupyterlab/builder` and `jupyter labextension` workflow. JupyterLab 4.6 is
-> transitioning extensions to the standalone `jupyter-builder` Python package
-> and `@jupyter/builder` npm package; see
-> [jupyter-builder issue #81](https://github.com/jupyterlab/jupyter-builder/issues/81).
-> Do not replace only the npm builder dependency in this repository. On Windows,
-> `jupyter-builder watch` can currently generate an invalid `_build.load` value
-> of `"static"`, causing JupyterLab to request the static directory and receive a
-> 404. Continue to use `jlpm build` and `jlpm watch` until the repository is
-> updated from the Copier template and the Python requirements, npm dependency,
-> and build scripts can be migrated together.
 
 ```bash
 # Clone the repo to your local environment

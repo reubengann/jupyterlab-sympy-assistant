@@ -344,6 +344,8 @@ function EquationLibraryView({ api, onInsertSympy }: IEquationViewProps) {
 }
 
 export class EquationLibraryPanel extends ReactWidget {
+  private refreshKey = 0;
+
   constructor(private options: IEquationLibraryPanelOptions) {
     super();
     this.id = 'jupyterlab-sympy-assistant:library-panel';
@@ -354,9 +356,15 @@ export class EquationLibraryPanel extends ReactWidget {
     this.addClass('jp-SympyEquationSidebar');
   }
 
+  reload(): void {
+    this.refreshKey += 1;
+    this.update();
+  }
+
   render(): JSX.Element {
     return (
       <EquationLibraryView
+        key={this.refreshKey}
         api={this.options.api}
         onInsertSympy={this.options.onInsertSympy}
       />

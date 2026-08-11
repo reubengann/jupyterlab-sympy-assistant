@@ -72,3 +72,46 @@ async def test_validation_error(jp_fetch):
             body=json.dumps({"name": "", "sympy": ""}),
         )
     assert err.value.code == 400
+
+
+async def test_library_export_and_import(jp_fetch):
+    await jp_fetch(
+        "api",
+        "jupyterlab-sympy-assistant",
+        "equations",
+        method="POST",
+        body=json.dumps({"name": "Original", "sympy": "x"}),
+    )
+    export_response = await jp_fetch(
+        "api", "jupyterlab-sympy-assistant", "library"
+    )
+    library = json.loads(export_response.body)
+    assert library["schema_version"] == 1
+    assert len(library["equations"]) == 1
+
+    library["equations"][0]["name"] = "Updated"
+    library["equations"].append(
+        {
+            "id": "imported-id",
+            "name": "Imported",
+            "sympy": "y",
+            "latex": "",
+            "description": "",
+            "tags": [],
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+        }
+    )
+    import_response = await jp_fetch(
+        "api",
+        "jupyterlab-sympy-assistant",
+        "library",
+        method="PUT",
+        body=json.dumps(library),
+    )
+    result = json.loads(import_response.body)
+    assert result == {"imported": 2, "added": 1, "updated": 1}
+
+    list_response = await jp_fetch("api", "jupyterlab-sympy-assistant", "equations")
+    equations = json.loads(list_response.body)["equations"]
+    assert [equation["name"] for equation in equations] == ["Updated", "Imported"]

@@ -1,1 +1,0 @@
-- Search button X should be a nice character

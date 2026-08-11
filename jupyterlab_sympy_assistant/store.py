@@ -27,6 +27,34 @@ class EquationLibraryStore:
             payload = self._load_payload()
             return payload["equations"]
 
+    def export_library(self) -> dict[str, Any]:
+        with self._lock:
+            return self._load_payload()
+
+    def import_library(self, raw: dict[str, Any]) -> dict[str, int]:
+        with self._lock:
+            imported = self._validate_import_payload(raw)
+            payload = self._load_payload()
+            existing_by_id = {
+                equation["id"]: index
+                for index, equation in enumerate(payload["equations"])
+            }
+            added = 0
+            updated = 0
+
+            for equation in imported:
+                existing_index = existing_by_id.get(equation["id"])
+                if existing_index is None:
+                    existing_by_id[equation["id"]] = len(payload["equations"])
+                    payload["equations"].append(equation)
+                    added += 1
+                else:
+                    payload["equations"][existing_index] = equation
+                    updated += 1
+
+            self._write_payload(payload)
+            return {"imported": len(imported), "added": added, "updated": updated}
+
     def create_equation(self, raw: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
             payload = self._load_payload()
@@ -87,6 +115,31 @@ class EquationLibraryStore:
             raise ValueError("Invalid equation library format.")
         payload["equations"] = equations
         return payload
+
+    def _validate_import_payload(self, raw: dict[str, Any]) -> list[dict[str, Any]]:
+        if not isinstance(raw, dict):
+            raise ValueError("Invalid equation library format.")
+        if raw.get("schema_version") != SCHEMA_VERSION:
+            raise ValueError("Unsupported equation library schema version.")
+
+        equations = raw.get("equations")
+        if not isinstance(equations, list):
+            raise ValueError("Invalid equation library format.")
+
+        validated: list[dict[str, Any]] = []
+        ids: set[str] = set()
+        for raw_equation in equations:
+            if not isinstance(raw_equation, dict):
+                raise ValueError("Each imported equation must be an object.")
+            record = EquationRecord.from_dict(raw_equation)
+            record.validate()
+            if record.id in ids:
+                raise ValueError(
+                    f"Equation id '{record.id}' appears more than once in the import."
+                )
+            ids.add(record.id)
+            validated.append(record.to_dict())
+        return validated
 
     def _write_payload(self, payload: dict[str, Any]) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
