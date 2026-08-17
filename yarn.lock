@@ -1666,12 +1666,12 @@ __metadata:
 
 "@equation-forge/core@file:../equation-forge::locator=jupyterlab-sympy-assistant%40workspace%3A.":
   version: 0.0.0
-  resolution: "@equation-forge/core@file:../equation-forge#../equation-forge::hash=feee42&locator=jupyterlab-sympy-assistant%40workspace%3A."
+  resolution: "@equation-forge/core@file:../equation-forge#../equation-forge::hash=5022d7&locator=jupyterlab-sympy-assistant%40workspace%3A."
   dependencies:
     "@unified-latex/unified-latex-util-parse": ^1.8.4
     "@unified-latex/unified-latex-util-print-raw": ^1.8.4
     algebrite: ^1.4.0
-  checksum: f294ee0e06ba376ce7e83d72621a3049542fbb745073473e949f6ed3f9472ef237b167ab13abd3fa33ac39acb022e9a07adba436be25c2c4ac564daa02ac4d1e
+  checksum: b8c0a6bb485c49af711cc5d4163ff8d001d3a71b13f57ca7efc1f3ca5c8f5a6a87b5c3e0002077bfaf4846539b8317aff685cce12b73ff3a4fd4ab8f38e67d7d
   languageName: node
   linkType: hard
 
