@@ -1664,16 +1664,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@equation-forge/core@file:../equation-forge::locator=jupyterlab-sympy-assistant%40workspace%3A.":
-  version: 0.0.0
-  resolution: "@equation-forge/core@file:../equation-forge#../equation-forge::hash=5022d7&locator=jupyterlab-sympy-assistant%40workspace%3A."
+"@equation-forge/core@portal:../equation-forge::locator=jupyterlab-sympy-assistant%40workspace%3A.":
+  version: 0.0.0-use.local
+  resolution: "@equation-forge/core@portal:../equation-forge::locator=jupyterlab-sympy-assistant%40workspace%3A."
   dependencies:
     "@unified-latex/unified-latex-util-parse": ^1.8.4
     "@unified-latex/unified-latex-util-print-raw": ^1.8.4
     algebrite: ^1.4.0
-  checksum: b8c0a6bb485c49af711cc5d4163ff8d001d3a71b13f57ca7efc1f3ca5c8f5a6a87b5c3e0002077bfaf4846539b8317aff685cce12b73ff3a4fd4ab8f38e67d7d
   languageName: node
-  linkType: hard
+  linkType: soft
 
 "@eslint-community/eslint-utils@npm:^4.2.0, @eslint-community/eslint-utils@npm:^4.4.0":
   version: 4.9.1
@@ -7989,7 +7988,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "jupyterlab-sympy-assistant@workspace:."
   dependencies:
-    "@equation-forge/core": "file:../equation-forge"
+    "@equation-forge/core": "portal:../equation-forge"
     "@jupyter/builder": ^1.2.2
     "@jupyterlab/application": ^4.0.0
     "@jupyterlab/apputils": ^4.0.0

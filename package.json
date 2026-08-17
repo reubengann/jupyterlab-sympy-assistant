@@ -58,7 +58,7 @@
         "watch:labextension": "jupyter-builder watch ."
     },
     "dependencies": {
-        "@equation-forge/core": "file:../equation-forge",
+        "@equation-forge/core": "portal:../equation-forge",
         "@jupyterlab/application": "^4.0.0",
         "@jupyterlab/apputils": "^4.0.0",
         "@jupyterlab/coreutils": "^6.0.0",
