@@ -6,27 +6,17 @@ This extension is composed of a Python package named `jupyterlab_sympy_assistant
 for the server extension and a NPM package named `jupyterlab-sympy-assistant`
 for the frontend extension.
 
+![library sidebar](lib_screenshot.png)
+
 ## What It Adds
 
-- An automatically registered **equation library panel** in the left sidebar.
-- A **sidebar equation library** with rendered math preview (KaTeX) and stored SymPy text.
-- An **Add/Edit modal** for equation metadata (`name`, `sympy`, `latex`, `description`, `tags`).
-- An **Insert from LaTeX** flow using the Equation Forge AST parser and SymPy output.
-- **Insert action** to place SymPy notation into the active notebook cell.
-- Command-palette actions to **export and import** the library as JSON.
-- A lightweight **server extension** that persists equations to a JSON file.
+- A sidebar equation library. Easily store equations, and paste them into notebooks as markdown, Sympy, or into Equation Forge.
+- Menu item to parse LaTeX expression into Sympy
 
 ## Requirements
 
 - JupyterLab >= 4.0.0
-- A sibling checkout of
-  [Equation Forge](https://github.com/reubengann/equation-forge)
-  when building from source. The frontend currently resolves
-  `@equation-forge/core` from `../equation-forge`.
-
-The Equation Forge dependency is compiled into the built JupyterLab
-extension. Users installing a prebuilt wheel do not need its repository, but
-source and editable installs do.
+- A sibling checkout of [Equation Forge](https://github.com/reubengann/equation-forge) when building from source. The frontend currently resolves `@equation-forge/core` from `../equation-forge`.
 
 ## Installation
 
